@@ -10,10 +10,11 @@ The stable entrypoint for published provider contracts is:
 
 ## Entrypoint Scope
 
-`scripts/install-profiles.sh` is currently a scaffolded contract surface.
+`scripts/install-profiles.sh` is the public install surface for `javi-ai`.
 
-It defines the request shape that consumers may rely on now, while deferring real
-install behavior to later work items.
+After the `javi-ai-completion` milestone, it implements real file installation
+(symlink-based delivery) in addition to request validation.
+
 
 ## Supported Arguments
 
@@ -28,7 +29,7 @@ install behavior to later work items.
 
 ## Current Contract Guarantees
 
-The scaffold guarantees:
+The entrypoint now guarantees:
 
 - the entrypoint name and location are stable for current wave work
 - unsupported provider, package, target, or contract-version requests fail fast
@@ -36,12 +37,12 @@ The scaffold guarantees:
   internals
 - request shape is provider/package/target driven rather than path driven
 
-The scaffold does not yet guarantee:
+The entrypoint does not yet guarantee:
 
-- file installation side effects
+- full preset resolution behavior
 - preset resolution behavior
-- extraction-backed provider profile materialization
-- cutover from legacy runtime logic
+- extraction-backed profile materialization for all future providers
+- interactive install wizard behavior
 
 ## Published Install Targets
 
@@ -67,7 +68,7 @@ All other published targets are user-profile targets.
 
 ## Wave 3 Readiness Statement
 
-Wave 3 establishes install contract authority, not full install execution.
+The javi-ai-completion milestone adds real file installation to the established contract surface.
 
-Consumers may now standardize on a single public entrypoint shape before later
-implementation and cutover waves land.
+File installation uses symlinks by default. Add `--home PATH` for user targets.
+
