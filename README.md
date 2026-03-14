@@ -82,6 +82,7 @@ Este repo no deberia ser el hogar principal de:
 
 ## Published Contract Docs
 
+- `docs/providers/AI-INTEGRATIONS.md`: guia canonica de integraciones AI y estado de slices migrados en Wave 5.
 - `docs/providers/PROVIDER-CONTRACT.md`: contrato humano-legible para providers, packages y mappings publicados.
 - `docs/providers/INSTALL-CONTRACT.md`: shape publica del entrypoint `scripts/install-profiles.sh`.
 - `docs/providers/SIX-CLI-PARITY-CHECKLIST.md`: matriz de paridad contractual para Claude, OpenCode, Gemini, Qwen, Codex y Copilot.

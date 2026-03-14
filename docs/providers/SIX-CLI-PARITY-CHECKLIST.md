@@ -25,8 +25,9 @@ It follows the parity dimensions defined in
 - provider contract comes from `manifests/providers.yaml`
 - package contract comes from `manifests/packages.yaml`
 - target contract comes from `manifests/targets.yaml`
-- docs current means this checklist plus `PROVIDER-CONTRACT.md` and
-  `INSTALL-CONTRACT.md` describe the published authority
+- docs current means this checklist plus `AI-INTEGRATIONS.md`,
+  `PROVIDER-CONTRACT.md`, and `INSTALL-CONTRACT.md` describe the published
+  authority
 - public install surface means `scripts/install-profiles.sh` accepts and validates
   the provider through published IDs
 
