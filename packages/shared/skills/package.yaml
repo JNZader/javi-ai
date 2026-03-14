@@ -1,7 +1,7 @@
 kind: ai-shared-package
 id: shared.skills
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/shared/skills
 purpose: Canonical shared skill package for reusable AI capabilities across first-class providers.
@@ -19,7 +19,7 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  extraction_status: javi-ai-completion
 composition:
   depends_on:
     - shared.instructions
@@ -39,6 +39,26 @@ scope:
     - provider-only prompt tuning
     - bootstrap-only helper scripts
     - forge template behaviors
+extracted_assets:
+  - sdd-apply/SKILL.md
+  - sdd-explore/SKILL.md
+  - sdd-propose/SKILL.md
+  - sdd-spec/SKILL.md
+  - sdd-design/SKILL.md
+  - sdd-tasks/SKILL.md
+  - sdd-verify/SKILL.md
+  - sdd-archive/SKILL.md
+  - sdd-init/SKILL.md
+  - typescript/SKILL.md
+  - react-19/SKILL.md
+  - nextjs-15/SKILL.md
+  - tailwind-4/SKILL.md
+  - zod-4/SKILL.md
+  - playwright/SKILL.md
+  - pytest/SKILL.md
+  - _shared/engram-convention.md
+  - _shared/persistence-contract.md
+  - _shared/openspec-convention.md
 notes:
-  - Scaffold only for WI-016; extraction starts in later work items.
-  - This directory becomes the canonical shared source once assets are migrated.
+  - javi-ai-completion extracted SDD skill family and technology skills from vault/Javi.Dots/GentlemanClaude/skills/.
+  - This is the canonical shared source; providers compose skills from here rather than storing copies.
