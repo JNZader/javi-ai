@@ -3,7 +3,7 @@ contract_version: 0.1.0
 status: published
 catalog_status:
   owner_repo: javi-ai
-  milestone: ai-project-packages
+  milestone: javi-ai-completion
   purpose: publish project-safe AI package contracts for generated repositories and forge integrations
 packages:
   - id: project.ai.instructions
@@ -56,19 +56,65 @@ packages:
     compatibility_notes:
       - safe for project use because it composes only shared package contracts and no provider runtime packages
       - consumers should treat this as the project-level SDD package instead of reading orchestrator files from shared internals
+  - id: project.memory.engram
+    display_name: Project Memory — Engram
+    version: 0.1.0
+    status: published
+    package_class: project-facing
+    purpose: expose engram persistent memory integration for project repositories that want cross-session AI memory
+    composed_from:
+      shared_packages:
+        - shared.memory
+        - shared.instructions
+      provider_packages: []
+    exported_capabilities:
+      - engram MCP server integration guide for project repos
+      - provider-neutral memory setup instructions
+    allowed_consumers:
+      - javi-forge
+      - generated repositories
+    source_lineage:
+      publication: javi-ai-completion
+      package_inputs:
+        - shared.memory
+        - shared.instructions
+      notes: now publishable because shared.memory was populated in javi-ai-completion
+    compatibility_notes:
+      - safe for project use because it exports only memory integration guidance, not provider secrets
+      - consumers request this package by published ID and do not depend on shared.memory internals
+  - id: project.ai.review
+    display_name: Project AI Review
+    version: 0.1.0
+    status: published
+    package_class: project-facing
+    purpose: expose AI-assisted code review assets for project repositories
+    composed_from:
+      shared_packages:
+        - shared.hooks
+        - shared.agents
+        - shared.instructions
+      provider_packages: []
+    exported_capabilities:
+      - shared hook scripts for automated review checks (comment-check, todo-tracker)
+      - quality orchestrator guidance for systematic code review
+    allowed_consumers:
+      - javi-forge
+      - generated repositories
+    source_lineage:
+      publication: javi-ai-completion
+      package_inputs:
+        - shared.hooks
+        - shared.agents
+        - shared.instructions
+      notes: publishable now that shared.hooks has real scripts and shared.agents has quality-orchestrator
+    compatibility_notes:
+      - safe for project use because it composes only shared package contracts and no provider runtime packages
+      - consumers treat this as the project-level AI review package
 published_project_package_ids:
   - project.ai.instructions
   - project.sdd.base
-reserved_project_package_ids:
   - project.memory.engram
   - project.ai.review
-deferred_project_packages:
-  - id: project.memory.engram
-    status: reserved
-    defer_reason: shared.memory remains scaffold-only, so the project-safe export set is not yet stable enough to publish
-  - id: project.ai.review
-    status: reserved
-    defer_reason: review-oriented project assets do not yet have a dedicated published export set independent of provider or internal layout assumptions
 project_package_contract:
   required_fields:
     - id
