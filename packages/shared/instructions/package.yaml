@@ -1,0 +1,44 @@
+kind: ai-shared-package
+id: shared.instructions
+version: 0.1.0
+status: scaffold
+owner: javi-ai
+canonical_path: packages/shared/instructions
+purpose: Canonical shared instructions package for reusable AI instructions and policy assets across providers.
+consumers:
+  - provider.claude.core
+  - provider.opencode.core
+  - provider.gemini.core
+  - provider.qwen.core
+  - provider.codex.core
+  - provider.copilot.core
+lineage:
+  upstream_inputs:
+    - upstream/gentle-ai
+    - upstream/agent-teams-lite
+  delta_inputs:
+    - delta/javi-dots
+    - delta/agentes-ia
+    - delta/project-starter-framework
+  extraction_status: pending-curation
+composition:
+  depends_on: []
+  install_targets:
+    - target.claude.user
+    - target.opencode.user
+    - target.gemini.user
+    - target.qwen.user
+    - target.codex.user
+    - target.copilot.repo
+scope:
+  includes:
+    - reusable instructions shared by two or more providers
+    - canonical policy and guidance assets for package composition
+    - lineage metadata for instruction-related migrated deltas
+  excludes:
+    - provider-specific overrides that belong in provider profiles
+    - bootstrap-only onboarding docs
+    - project template instructions owned by javi-forge
+notes:
+  - Scaffold only for WI-016; this package exists to break legacy AGENTS.md coupling before extraction.
+  - Shared instruction ownership stays here even when providers add local overrides later.

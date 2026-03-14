@@ -1,0 +1,45 @@
+kind: ai-shared-package
+id: shared.agents
+version: 0.1.0
+status: scaffold
+owner: javi-ai
+canonical_path: packages/shared/agents
+purpose: Canonical shared agent and orchestrator package for multi-provider AI flows.
+consumers:
+  - provider.claude.core
+  - provider.opencode.core
+  - provider.gemini.core
+  - provider.qwen.core
+  - provider.codex.core
+  - provider.copilot.core
+lineage:
+  upstream_inputs:
+    - upstream/gentle-ai
+    - upstream/agent-teams-lite
+  delta_inputs:
+    - delta/javi-dots
+    - delta/agentes-ia
+    - delta/project-starter-framework
+  extraction_status: pending-curation
+composition:
+  depends_on:
+    - shared.instructions
+  install_targets:
+    - target.claude.user
+    - target.opencode.user
+    - target.gemini.user
+    - target.qwen.user
+    - target.codex.user
+    - target.copilot.repo
+scope:
+  includes:
+    - reusable agent definitions
+    - orchestrator assets shared by two or more providers
+    - provider-neutral execution flow metadata
+  excludes:
+    - provider-specific runtime config
+    - bootstrap UX logic owned by javi-dots
+    - project template logic owned by javi-forge
+notes:
+  - Scaffold only for WI-016; no extracted shared assets live here yet.
+  - Shared-first rule applies before any provider duplicates this capability.

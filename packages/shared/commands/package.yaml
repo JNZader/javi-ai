@@ -1,0 +1,44 @@
+kind: ai-shared-package
+id: shared.commands
+version: 0.1.0
+status: scaffold
+owner: javi-ai
+canonical_path: packages/shared/commands
+purpose: Canonical shared command package for reusable AI command surfaces across providers.
+consumers:
+  - provider.claude.core
+  - provider.opencode.core
+  - provider.gemini.core
+  - provider.qwen.core
+  - provider.codex.core
+  - provider.copilot.core
+lineage:
+  upstream_inputs:
+    - upstream/gentle-ai
+    - upstream/agent-teams-lite
+  delta_inputs:
+    - delta/javi-dots
+    - delta/project-starter-framework
+  extraction_status: pending-curation
+composition:
+  depends_on:
+    - shared.instructions
+  install_targets:
+    - target.claude.user
+    - target.opencode.user
+    - target.gemini.user
+    - target.qwen.user
+    - target.codex.user
+    - target.copilot.repo
+scope:
+  includes:
+    - reusable command definitions
+    - provider-neutral command metadata
+    - command assets packaged once for multiple providers
+  excludes:
+    - provider-exclusive command shims
+    - workstation shell commands owned by javi-dots
+    - project scaffolding commands owned by javi-forge
+notes:
+  - Scaffold only for WI-016; command extraction remains pending.
+  - Consumers should treat this directory as the canonical shared home once populated.

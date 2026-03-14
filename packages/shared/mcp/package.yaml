@@ -1,0 +1,44 @@
+kind: ai-shared-package
+id: shared.mcp
+version: 0.1.0
+status: scaffold
+owner: javi-ai
+canonical_path: packages/shared/mcp
+purpose: Canonical shared MCP package for reusable machine-context integrations across providers.
+consumers:
+  - provider.claude.core
+  - provider.opencode.core
+  - provider.gemini.core
+  - provider.qwen.core
+  - provider.codex.core
+  - provider.copilot.core
+lineage:
+  upstream_inputs:
+    - upstream/gentle-ai
+    - upstream/engram
+  delta_inputs:
+    - delta/javi-dots
+    - delta/agentes-ia
+  extraction_status: pending-curation
+composition:
+  depends_on:
+    - shared.instructions
+  install_targets:
+    - target.claude.user
+    - target.opencode.user
+    - target.gemini.user
+    - target.qwen.user
+    - target.codex.user
+    - target.copilot.repo
+scope:
+  includes:
+    - reusable MCP assets
+    - provider-neutral MCP integration metadata
+    - shared packaging metadata for MCP-derived slices
+  excludes:
+    - provider-specific MCP auth or transport overrides
+    - machine bootstrap integrations outside AI ownership
+    - forge project integration manifests
+notes:
+  - Scaffold only for WI-016; no MCP assets have been migrated here yet.
+  - Later extraction should record retained deltas against the lineage inputs listed above.
