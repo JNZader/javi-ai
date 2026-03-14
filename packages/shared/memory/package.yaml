@@ -1,7 +1,7 @@
 kind: ai-shared-package
 id: shared.memory
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/shared/memory
 purpose: Canonical shared memory package for reusable memory, context, and recall assets across providers.
@@ -19,7 +19,7 @@ lineage:
   delta_inputs:
     - delta/javi-dots
     - delta/agentes-ia
-  extraction_status: pending-curation
+  extraction_status: javi-ai-completion
 composition:
   depends_on:
     - shared.instructions
@@ -39,6 +39,9 @@ scope:
     - provider-local memory overrides
     - non-AI workstation state owned by javi-dots
     - project-scoped memory integration contracts
+extracted_assets:
+  - README.md
+  - engram-config.md
 notes:
-  - Scaffold only for WI-016; memory asset extraction is deferred to later work items.
-  - This package is the future canonical source for cross-provider memory behavior.
+  - javi-ai-completion populated this package with engram integration guide and provider setup instructions.
+  - This package is now the canonical source for cross-provider memory integration patterns.
