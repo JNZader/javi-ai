@@ -3,7 +3,7 @@ id: provider.codex.core
 provider_id: codex
 display_name: Codex CLI
 version: 0.1.0
-status: partial
+status: complete
 owner: javi-ai
 canonical_path: packages/providers/codex
 install_target: target.codex.user

@@ -1,0 +1,14 @@
+# javi-ai provider profile: provider.codex.core
+# Codex CLI configuration
+
+[model]
+# Default model — override with CODEX_MODEL env var
+name = "codex-mini-latest"
+
+[sandbox]
+# Permit network access for web search and fetch
+permit_network = false
+
+[approval]
+# require approval for destructive operations
+mode = "suggest"

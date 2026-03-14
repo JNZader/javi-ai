@@ -3,7 +3,7 @@ id: provider.gemini.core
 provider_id: gemini
 display_name: Gemini CLI
 version: 0.1.0
-status: partial
+status: complete
 owner: javi-ai
 canonical_path: packages/providers/gemini
 install_target: target.gemini.user

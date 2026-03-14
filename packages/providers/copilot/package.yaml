@@ -3,7 +3,7 @@ id: provider.copilot.core
 provider_id: copilot
 display_name: GitHub Copilot
 version: 0.1.0
-status: partial
+status: complete
 owner: javi-ai
 canonical_path: packages/providers/copilot
 install_target: target.copilot.repo
