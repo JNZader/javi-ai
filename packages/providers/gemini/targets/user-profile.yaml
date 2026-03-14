@@ -18,9 +18,11 @@ asset_mappings:
     delivery: generate
     role: instructions
     transform: prepend-gemini-header
-legacy_sources:
+reference_legacy_sources:
   - vault/Javi.Dots/skills/setup.sh
   - vault/Javi.Dots/unified-instructions/orchestrator.md
+active_legacy_dependency: none
+cutover_status: wi-027-complete
 generated_header: |
   # Gemini CLI Instructions
 
@@ -28,4 +30,5 @@ generated_header: |
   > Run `./skills/setup.sh --install-gemini-orchestrator` to regenerate
 notes:
   - First provider-profile slice extracted in WI-019.
+  - WI-027 retires active legacy derivation for this target recipe; listed legacy paths are historical reference only.
   - Gemini continues to assemble shared instructions from canonical shared packages rather than storing a duplicated full copy inside the provider profile.

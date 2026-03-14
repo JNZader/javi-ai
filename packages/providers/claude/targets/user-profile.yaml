@@ -25,10 +25,13 @@ asset_mappings:
     destination: ~/.claude/tweakcc-theme.json
     delivery: copy
     role: override
-legacy_sources:
+reference_legacy_sources:
   - vault/Javi.Dots/GentlemanClaude/settings.json
   - vault/Javi.Dots/GentlemanClaude/statusline.sh
   - vault/Javi.Dots/GentlemanClaude/tweakcc-theme.json
+active_legacy_dependency: none
+cutover_status: wi-027-complete
 notes:
   - First provider-profile slice extracted in WI-019.
+  - WI-027 retires active legacy derivation for this target recipe; listed legacy paths are historical reference only.
   - Shared instructions remain canonical in shared.instructions; this target only adds Claude-specific runtime and override assets.

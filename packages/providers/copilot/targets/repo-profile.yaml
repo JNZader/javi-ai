@@ -17,9 +17,12 @@ asset_mappings:
     destination: ${repo}/.github/copilot-instructions.md
     delivery: generate
     role: instructions
-legacy_sources:
+reference_legacy_sources:
   - vault/Javi.Dots/skills/setup.sh
   - vault/Javi.Dots/unified-instructions/orchestrator.md
+active_legacy_dependency: none
+cutover_status: wi-027-complete
 notes:
   - First provider-profile slice extracted in WI-019.
+  - WI-027 retires active legacy derivation for this target recipe; listed legacy paths are historical reference only.
   - Copilot keeps a repo-scoped generated target while reusable behavior stays canonical in shared packages.

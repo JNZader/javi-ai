@@ -12,12 +12,12 @@ It follows the parity dimensions defined in
 
 | Provider | Profile boundary exists | Provider contract | Package contract | Target contract | Docs current | Public install surface | Cutover status |
 |---|---|---|---|---|---|---|---|
-| Claude | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
-| OpenCode | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
-| Gemini | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
-| Qwen | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
-| Codex | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
-| Copilot | yes | yes | yes | yes | yes | yes | pending later extraction/cutover waves |
+| Claude | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
+| OpenCode | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
+| Gemini | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
+| Qwen | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
+| Codex | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
+| Copilot | yes | yes | yes | yes | yes | yes | WI-027 complete for migrated slice |
 
 ## Evidence For Each Row
 
@@ -30,12 +30,15 @@ It follows the parity dimensions defined in
   authority
 - public install surface means `scripts/install-profiles.sh` accepts and validates
   the provider through published IDs
+- cutover status means the migrated provider slice no longer records active
+  legacy derivation and keeps any old path references as historical metadata only
 
 ## Gate Interpretation
 
 For WI-012, parity means contract visibility is complete across all six providers.
 
-It does not mean provider extraction is complete.
+After WI-027, the completed provider slices also pass the AI cutover check for
+"no active legacy derivation".
 
 This checklist should block later authority claims if any provider loses:
 

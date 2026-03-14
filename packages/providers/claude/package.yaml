@@ -32,10 +32,12 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  legacy_sources:
+  reference_legacy_sources:
     - vault/Javi.Dots/GentlemanClaude/settings.json
     - vault/Javi.Dots/GentlemanClaude/statusline.sh
     - vault/Javi.Dots/GentlemanClaude/tweakcc-theme.json
+  active_legacy_dependency: none
+  cutover_status: wi-027-complete
   extraction_status: slice-wi-019
   extracted_assets:
     - runtime/settings.json
@@ -53,4 +55,5 @@ scope:
     - project-scaffolding assets owned by javi-forge
 notes:
   - WI-019 lands the first Claude-specific runtime and override slice in the provider profile.
+  - WI-027 retires active legacy derivation for the extracted Claude assets; listed legacy paths are historical reference only.
   - Shared behavior remains canonical in shared packages even when Claude adds local overrides.

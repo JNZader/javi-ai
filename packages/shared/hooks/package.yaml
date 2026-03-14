@@ -19,9 +19,11 @@ lineage:
   delta_inputs:
     - delta/javi-dots
     - delta/agentes-ia
-  legacy_sources:
+  reference_legacy_sources:
     - vault/Javi.Dots/GentlemanClaude/hooks/comment-check.sh
     - vault/Javi.Dots/GentlemanClaude/hooks/todo-tracker.sh
+  active_legacy_dependency: none
+  cutover_status: wi-027-complete
   extraction_status: slice-wi-018
   extracted_assets:
     - scripts/comment-check.sh
@@ -47,5 +49,6 @@ scope:
     - template generation hooks owned by javi-forge
 notes:
   - WI-018 lands the first reusable hook subset in this package.
+  - WI-027 retires active legacy derivation for the extracted hook assets; listed legacy paths are historical reference only.
   - Provider-specific overrides belong in provider profile directories, not here.
   - Legacy remains reference-only for hook assets that have not been repackaged into provider targets yet.

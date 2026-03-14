@@ -32,9 +32,11 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  legacy_sources:
+  reference_legacy_sources:
     - vault/Javi.Dots/skills/setup.sh
     - vault/Javi.Dots/unified-instructions/orchestrator.md
+  active_legacy_dependency: none
+  cutover_status: wi-027-complete
   extraction_status: slice-wi-019
   extracted_assets:
     - targets/repo-profile.yaml
@@ -49,4 +51,5 @@ scope:
     - project-scaffolding assets owned by javi-forge
 notes:
   - WI-019 records the first Copilot target slice as a repo-scoped generated install recipe.
+  - WI-027 retires active legacy derivation for the extracted Copilot assets; listed legacy paths are historical reference only.
   - Shared behavior remains canonical in shared packages even when Copilot adds local target transforms.

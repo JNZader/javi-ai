@@ -20,8 +20,10 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  legacy_sources:
+  reference_legacy_sources:
     - vault/Javi.Dots/opencode-agents/
+  active_legacy_dependency: none
+  cutover_status: wi-027-complete
   extraction_status: slice-wi-018
   extracted_assets:
     - orchestrators/gentleman.md
@@ -58,5 +60,6 @@ scope:
     - project template logic owned by javi-forge
 notes:
   - WI-018 lands the first canonical legacy-derived orchestrator slice in this package.
+  - WI-027 retires active legacy derivation for the extracted orchestrator assets; listed legacy paths are historical reference only.
   - Shared-first rule applies before any provider duplicates this capability.
   - Provider packaging remains a later step; these files are the canonical shared source for this migrated slice.

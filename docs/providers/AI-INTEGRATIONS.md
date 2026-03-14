@@ -6,8 +6,8 @@ This document is the canonical AI integration guide for the migrated Wave 5 slic
 owned by `javi-ai`.
 
 It publishes where shared AI assets and first-class provider profiles now live
-after WI-018 and WI-019, and it tells consumers which legacy docs are now
-reference-only for those migrated slices.
+after WI-018 and WI-019, and it records the WI-027 cutover that stops active
+legacy derivation for the completed shared and provider slices.
 
 ## Canonical Authority
 
@@ -73,9 +73,26 @@ and may add optional shared packages without taking ownership of them.
 
 Current phase note:
 
-- docs and package homes are canonical for the migrated slices
-- full authority cutover away from active legacy derivation remains gated to
-  WI-027
+- docs, package homes, and target recipes are canonical for the migrated slices
+- WI-027 is complete for the extracted Wave 5 slices, so active runtime/source
+  derivation now stays inside `javi-ai`
+- listed legacy paths remain historical reference only for lineage and later
+  non-migrated slices
+
+## WI-027 Cutover Effect
+
+For the completed slices from WI-018 and WI-019:
+
+- `packages/shared/*/package.yaml` now records `active_legacy_dependency: none`
+- `packages/providers/*/package.yaml` now records `active_legacy_dependency: none`
+- provider target recipes keep legacy locations only as
+  `reference_legacy_sources`
+- new edits for these slices must land in `javi-ai`, not `vault/Javi.Dots`
+
+This cutover does not claim that every future AI slice is migrated yet.
+
+It only retires active legacy derivation for the shared/provider assets already
+extracted into canonical package and provider homes.
 
 ## Legacy Docs Now Marked As Mirrors
 

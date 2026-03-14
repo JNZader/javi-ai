@@ -21,9 +21,12 @@ asset_mappings:
     destination: ~/.qwen/QWEN.md
     delivery: copy
     role: instructions
-legacy_sources:
+reference_legacy_sources:
   - vault/Javi.Dots/GentlemanQwen/settings.json
   - vault/Javi.Dots/GentlemanQwen/QWEN.md
+active_legacy_dependency: none
+cutover_status: wi-027-complete
 notes:
   - First provider-profile slice extracted in WI-019.
+  - WI-027 retires active legacy derivation for this target recipe; listed legacy paths are historical reference only.
   - Qwen keeps its provider-specific instruction file in the profile while shared packages remain canonical for reusable behavior.
