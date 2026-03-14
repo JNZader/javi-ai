@@ -1,0 +1,23 @@
+kind: install-target-catalog
+contract_version: 0.1.0
+status: scaffold
+targets: []
+reserved_target_ids:
+  - target.claude.user
+  - target.opencode.user
+  - target.gemini.user
+  - target.qwen.user
+  - target.codex.user
+  - target.copilot.repo
+install_modes:
+  - link
+  - copy
+  - generate
+  - sync
+target_contract:
+  required_fields:
+    - id
+    - runtime_type
+    - supported_providers
+    - install_mode
+    - compatibility_notes

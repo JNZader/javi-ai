@@ -1,0 +1,26 @@
+kind: package-catalog
+contract_version: 0.1.0
+status: scaffold
+packages: []
+reserved_package_ids:
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+  - shared.instructions
+  - provider.claude.core
+  - provider.opencode.core
+  - provider.gemini.core
+  - provider.qwen.core
+  - provider.codex.core
+  - provider.copilot.core
+package_contract:
+  required_fields:
+    - id
+    - type
+    - version
+    - dependencies
+    - install_targets
+    - source_lineage

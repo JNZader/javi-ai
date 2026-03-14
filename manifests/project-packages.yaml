@@ -1,0 +1,15 @@
+kind: project-package-catalog
+contract_version: 0.1.0
+status: scaffold
+packages: []
+reserved_project_package_ids:
+  - project.sdd.base
+  - project.memory.engram
+  - project.ai.instructions
+  - project.ai.review
+project_package_contract:
+  required_fields:
+    - id
+    - version
+    - source_lineage
+    - compatibility_notes

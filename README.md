@@ -74,6 +74,12 @@ Este repo no deberia ser el hogar principal de:
 - `../vault/Javi.Dots`: referencia legacy para extraer delta util, no base principal.
 - `../docs/migration/MIGRATION-MATRIX.md`: referencia de jerarquia upstream-first y destinos.
 
+## Contract Governance
+
+- `manifests/providers.yaml`, `manifests/packages.yaml`, `manifests/targets.yaml` y `manifests/project-packages.yaml` son el punto de partida publico para `ecosystem-restructure`.
+- La gobernanza y el namespace aprobado viven en `../javi-platform/docs/contracts/CONTRACT-INDEX.md` y `../javi-platform/openspec/changes/ecosystem-restructure/contracts.md`.
+- Los consumers deben depender de IDs y contratos publicados, nunca del layout interno de `packages/` o `scripts/`.
+
 ## Current State
 
 Skeleton minimo de capas internas creado para preparar la migracion sin mover codigo legacy todavia.

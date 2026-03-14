@@ -1,0 +1,19 @@
+kind: provider-catalog
+contract_version: 0.1.0
+status: scaffold
+providers: []
+required_provider_ids:
+  - claude
+  - opencode
+  - gemini
+  - qwen
+  - codex
+  - copilot
+provider_contract:
+  required_fields:
+    - id
+    - profile_status
+    - supported_install_targets
+    - minimum_packages
+    - optional_package_groups
+    - contract_version
