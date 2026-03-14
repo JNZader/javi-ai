@@ -1,7 +1,7 @@
 kind: ai-shared-package
 id: shared.commands
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/shared/commands
 purpose: Canonical shared command package for reusable AI command surfaces across providers.
@@ -19,7 +19,7 @@ lineage:
   delta_inputs:
     - delta/javi-dots
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  extraction_status: javi-ai-completion
 composition:
   depends_on:
     - shared.instructions
@@ -39,6 +39,15 @@ scope:
     - provider-exclusive command shims
     - workstation shell commands owned by javi-dots
     - project scaffolding commands owned by javi-forge
+extracted_assets:
+  - sdd-apply.md
+  - sdd-explore.md
+  - sdd-init.md
+  - sdd-continue.md
+  - sdd-ff.md
+  - sdd-archive.md
+  - sdd-verify.md
+  - sdd-new.md
 notes:
-  - Scaffold only for WI-016; command extraction remains pending.
-  - Consumers should treat this directory as the canonical shared home once populated.
+  - javi-ai-completion extracted SDD slash-commands from vault/Javi.Dots/GentlemanOpenCode/commands/.
+  - Primary consumer is OpenCode; other providers use skills instead of commands.
