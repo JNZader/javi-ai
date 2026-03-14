@@ -2,7 +2,7 @@ kind: provider-install-slice
 provider_id: claude
 provider_package_id: provider.claude.core
 install_target: target.claude.user
-status: partial
+status: complete
 install_mode: sync
 shared_inputs:
   - shared.instructions

@@ -13,11 +13,14 @@ shared_inputs:
   - shared.mcp
   - shared.memory
 asset_mappings:
-  - source: packages/shared/instructions/orchestrator.md
-    destination: ~/CODEX.md
-    delivery: generate
+  - source: packages/providers/codex/runtime/AGENTS.md
+    destination: ~/.codex/AGENTS.md
+    delivery: link
     role: instructions
-    transform: prepend-codex-header
+  - source: packages/providers/codex/runtime/codex.toml
+    destination: ~/.codex/codex.toml
+    delivery: link
+    role: runtime
 reference_legacy_sources:
   - vault/Javi.Dots/skills/setup.sh
   - vault/Javi.Dots/unified-instructions/orchestrator.md

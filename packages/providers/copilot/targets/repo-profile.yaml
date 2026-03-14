@@ -13,9 +13,9 @@ shared_inputs:
   - shared.mcp
   - shared.memory
 asset_mappings:
-  - source: packages/shared/instructions/orchestrator.md
-    destination: ${repo}/.github/copilot-instructions.md
-    delivery: generate
+  - source: packages/providers/copilot/runtime/copilot-instructions.md
+    destination: .github/copilot/instructions.md
+    delivery: link
     role: instructions
 reference_legacy_sources:
   - vault/Javi.Dots/skills/setup.sh

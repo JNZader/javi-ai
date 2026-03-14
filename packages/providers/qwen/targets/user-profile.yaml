@@ -2,7 +2,7 @@ kind: provider-install-slice
 provider_id: qwen
 provider_package_id: provider.qwen.core
 install_target: target.qwen.user
-status: partial
+status: complete
 install_mode: sync
 shared_inputs:
   - shared.instructions

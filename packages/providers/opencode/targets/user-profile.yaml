@@ -2,7 +2,7 @@ kind: provider-install-slice
 provider_id: opencode
 provider_package_id: provider.opencode.core
 install_target: target.opencode.user
-status: partial
+status: complete
 install_mode: sync
 shared_inputs:
   - shared.instructions
