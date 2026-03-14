@@ -1,15 +1,88 @@
 kind: project-package-catalog
 contract_version: 0.1.0
-status: scaffold
-packages: []
-reserved_project_package_ids:
-  - project.sdd.base
-  - project.memory.engram
+status: published
+catalog_status:
+  owner_repo: javi-ai
+  milestone: ai-project-packages
+  purpose: publish project-safe AI package contracts for generated repositories and forge integrations
+packages:
+  - id: project.ai.instructions
+    display_name: Project AI Instructions
+    version: 0.1.0
+    status: published
+    package_class: project-facing
+    purpose: expose provider-neutral AI instructions and policy assets that generated repositories can adopt without depending on provider profiles
+    composed_from:
+      shared_packages:
+        - shared.instructions
+      provider_packages: []
+    exported_capabilities:
+      - reusable AI instructions for repository-level guidance
+      - provider-neutral policy and prompt baseline for project consumers
+    allowed_consumers:
+      - javi-forge
+      - generated repositories
+    source_lineage:
+      publication: net-new
+      package_inputs:
+        - shared.instructions
+      notes: project-facing wrapper over the canonical shared instruction slice
+    compatibility_notes:
+      - safe for project use because it exports only provider-neutral shared instruction assets
+      - consumers request this package by published ID only and do not depend on shared package internals
+  - id: project.sdd.base
+    display_name: Project SDD Base
+    version: 0.1.0
+    status: published
+    package_class: project-facing
+    purpose: expose the minimum project-safe AI package set for repositories that adopt spec-driven development workflows
+    composed_from:
+      shared_packages:
+        - shared.instructions
+        - shared.agents
+      provider_packages: []
+    exported_capabilities:
+      - reusable SDD workflow guidance for project repositories
+      - orchestrator and planning assets rooted in shared package contracts
+    allowed_consumers:
+      - javi-forge
+      - generated repositories
+    source_lineage:
+      publication: net-new
+      package_inputs:
+        - shared.instructions
+        - shared.agents
+      notes: project-facing composition built from the already published shared instruction and agent slices
+    compatibility_notes:
+      - safe for project use because it composes only shared package contracts and no provider runtime packages
+      - consumers should treat this as the project-level SDD package instead of reading orchestrator files from shared internals
+published_project_package_ids:
   - project.ai.instructions
+  - project.sdd.base
+reserved_project_package_ids:
+  - project.memory.engram
   - project.ai.review
+deferred_project_packages:
+  - id: project.memory.engram
+    status: reserved
+    defer_reason: shared.memory remains scaffold-only, so the project-safe export set is not yet stable enough to publish
+  - id: project.ai.review
+    status: reserved
+    defer_reason: review-oriented project assets do not yet have a dedicated published export set independent of provider or internal layout assumptions
 project_package_contract:
   required_fields:
     - id
     - version
+    - status
+    - purpose
+    - composed_from
     - source_lineage
     - compatibility_notes
+  optional_fields:
+    - display_name
+    - exported_capabilities
+    - allowed_consumers
+  consumer_rules:
+    - consume published project package IDs only
+    - project packages may compose shared package IDs but may not expose provider package IDs as project contracts
+    - reserved IDs remain unavailable until promoted to concrete package records

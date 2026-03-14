@@ -86,7 +86,13 @@ Este repo no deberia ser el hogar principal de:
 - `docs/providers/PROVIDER-CONTRACT.md`: contrato humano-legible para providers, packages y mappings publicados.
 - `docs/providers/INSTALL-CONTRACT.md`: shape publica del entrypoint `scripts/install-profiles.sh`.
 - `docs/providers/SIX-CLI-PARITY-CHECKLIST.md`: matriz de paridad contractual para Claude, OpenCode, Gemini, Qwen, Codex y Copilot.
+- `docs/project-packages/PROJECT-PACKAGE-CONTRACT.md`: contrato humano-legible para paquetes AI project-facing consumibles por `javi-forge` o repos generados.
 
 ## Current State
 
-Skeleton minimo de capas internas creado para preparar la migracion sin mover codigo legacy todavia.
+Los contratos publicos de providers, packages, targets y install entrypoint ya estan publicados.
+
+El milestone `ai-project-packages` tambien publica el primer catalogo concreto de paquetes project-facing en `manifests/project-packages.yaml`:
+
+- publicados ahora: `project.ai.instructions`, `project.sdd.base`
+- reservados para despues: `project.memory.engram`, `project.ai.review`
