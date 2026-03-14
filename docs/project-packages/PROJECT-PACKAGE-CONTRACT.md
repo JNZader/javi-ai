@@ -27,25 +27,10 @@ The current stable project-facing package set is:
 
 - `project.ai.instructions`
 - `project.sdd.base`
-
-These packages are published because they can be grounded in already published
-shared package slices without exposing provider-specific runtime packages.
-
-## Reserved But Not Yet Published
-
-The catalog still reserves these IDs for later work:
-
 - `project.memory.engram`
 - `project.ai.review`
 
-They are intentionally not requestable yet.
-
-Reason summary:
-
-- `project.memory.engram` depends on a shared memory slice that is still
-  scaffold-only
-- `project.ai.review` does not yet have a dedicated project-safe export set that
-  is independent of provider or internal layout assumptions
+All four packages are now published as of the `javi-ai-completion` milestone.
 
 ## Package Composition Rules
 
@@ -95,10 +80,18 @@ Safe consumer expectation:
 - repos may request this package when they need project-level SDD guidance and
   orchestrator-facing assets without depending on internal shared file layout
 
+## Current Published Packages Summary
+
+| Package ID | Shared inputs | Purpose |
+|---|---|---|
+| `project.ai.instructions` | `shared.instructions` | Provider-neutral AI instruction base |
+| `project.sdd.base` | `shared.instructions`, `shared.agents` | SDD workflow for project repos |
+| `project.memory.engram` | `shared.memory`, `shared.instructions` | Engram persistent memory integration |
+| `project.ai.review` | `shared.hooks`, `shared.agents`, `shared.instructions` | AI-assisted code review |
+
 ## Consumer Rules
 
 - `javi-forge` may list only published project package IDs in its allowed or
   optional AI integration mappings
 - generated repos consume project package IDs, never provider package IDs
-- if a reserved ID becomes published later, the producer catalog must be updated
-  first and downstream mappings can follow afterward
+- all four published IDs are now stable and safe to depend on
