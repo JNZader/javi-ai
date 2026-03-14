@@ -80,6 +80,12 @@ Este repo no deberia ser el hogar principal de:
 - La gobernanza y el namespace aprobado viven en `../javi-platform/docs/contracts/CONTRACT-INDEX.md` y `../javi-platform/openspec/changes/ecosystem-restructure/contracts.md`.
 - Los consumers deben depender de IDs y contratos publicados, nunca del layout interno de `packages/` o `scripts/`.
 
+## Published Contract Docs
+
+- `docs/providers/PROVIDER-CONTRACT.md`: contrato humano-legible para providers, packages y mappings publicados.
+- `docs/providers/INSTALL-CONTRACT.md`: shape publica del entrypoint `scripts/install-profiles.sh`.
+- `docs/providers/SIX-CLI-PARITY-CHECKLIST.md`: matriz de paridad contractual para Claude, OpenCode, Gemini, Qwen, Codex y Copilot.
+
 ## Current State
 
 Skeleton minimo de capas internas creado para preparar la migracion sin mover codigo legacy todavia.
