@@ -1,7 +1,7 @@
 kind: ai-shared-package
 id: shared.agents
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/shared/agents
 purpose: Canonical shared agent and orchestrator package for multi-provider AI flows.
@@ -20,7 +20,23 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/opencode-agents/
+  extraction_status: slice-wi-018
+  extracted_assets:
+    - orchestrators/gentleman.md
+    - orchestrators/master-orchestrator.md
+    - orchestrators/sdd-orchestrator.md
+    - orchestrators/architect-orchestrator.md
+    - orchestrators/frontend-orchestrator.md
+    - orchestrators/backend-orchestrator.md
+    - orchestrators/devops-orchestrator.md
+    - orchestrators/data-ai-orchestrator.md
+    - orchestrators/quality-orchestrator.md
+    - orchestrators/business-orchestrator.md
+    - orchestrators/specialized-orchestrator.md
+    - orchestrators/planner-orchestrator.md
+    - orchestrators/README.md
 composition:
   depends_on:
     - shared.instructions
@@ -41,5 +57,6 @@ scope:
     - bootstrap UX logic owned by javi-dots
     - project template logic owned by javi-forge
 notes:
-  - Scaffold only for WI-016; no extracted shared assets live here yet.
+  - WI-018 lands the first canonical legacy-derived orchestrator slice in this package.
   - Shared-first rule applies before any provider duplicates this capability.
+  - Provider packaging remains a later step; these files are the canonical shared source for this migrated slice.

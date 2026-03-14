@@ -1,7 +1,7 @@
 kind: ai-shared-package
 id: shared.instructions
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/shared/instructions
 purpose: Canonical shared instructions package for reusable AI instructions and policy assets across providers.
@@ -20,7 +20,15 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/AGENTS.md
+    - vault/Javi.Dots/unified-instructions/README.md
+    - vault/Javi.Dots/unified-instructions/orchestrator.md
+  extraction_status: slice-wi-018
+  extracted_assets:
+    - AGENTS.md
+    - README.md
+    - orchestrator.md
 composition:
   depends_on: []
   install_targets:
@@ -40,5 +48,6 @@ scope:
     - bootstrap-only onboarding docs
     - project template instructions owned by javi-forge
 notes:
-  - Scaffold only for WI-016; this package exists to break legacy AGENTS.md coupling before extraction.
+  - WI-018 lands the first canonical legacy-derived instruction slice in this package.
   - Shared instruction ownership stays here even when providers add local overrides later.
+  - Legacy remains reference-only for instruction assets that have not been curated into later slices yet.
