@@ -1,0 +1,47 @@
+kind: ai-provider-profile
+id: provider.copilot.core
+provider_id: copilot
+display_name: GitHub Copilot
+version: 0.1.0
+status: scaffold
+owner: javi-ai
+canonical_path: packages/providers/copilot
+install_target: target.copilot.repo
+contract_refs:
+  provider_manifest: manifests/providers.yaml#copilot
+  package_manifest: manifests/packages.yaml#provider.copilot.core
+  target_manifest: manifests/targets.yaml#target.copilot.repo
+composition:
+  required_packages:
+    - shared.instructions
+  optional_shared_packages:
+    - shared.agents
+    - shared.skills
+    - shared.hooks
+    - shared.commands
+    - shared.mcp
+    - shared.memory
+homes:
+  runtime: packages/providers/copilot/runtime
+  overrides: packages/providers/copilot/overrides
+  targets: packages/providers/copilot/targets
+lineage:
+  upstream_inputs:
+    - upstream/gentle-ai
+  delta_inputs:
+    - delta/javi-dots
+    - delta/agentes-ia
+    - delta/project-starter-framework
+  extraction_status: pending-curation
+scope:
+  owns:
+    - provider-specific runtime config and wrappers for GitHub Copilot
+    - provider-specific overrides, themes, permissions, and UX settings
+    - install-target assembly inputs for target.copilot.repo
+  excludes:
+    - shared instructions, agents, skills, hooks, commands, MCP, and memory packages
+    - bootstrap wrappers owned by javi-dots
+    - project-scaffolding assets owned by javi-forge
+notes:
+  - Scaffold only for WI-017; provider profile authority exists before provider asset extraction.
+  - Shared behavior remains canonical in shared packages even when Copilot adds local overrides.
