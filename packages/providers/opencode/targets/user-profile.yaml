@@ -1,0 +1,29 @@
+kind: provider-install-slice
+provider_id: opencode
+provider_package_id: provider.opencode.core
+install_target: target.opencode.user
+status: partial
+install_mode: sync
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/providers/opencode/runtime/opencode.json
+    destination: ~/.config/opencode/opencode.json
+    delivery: copy
+    role: runtime
+  - source: packages/providers/opencode/overrides/gentleman-theme.json
+    destination: ~/.config/opencode/themes/gentleman.json
+    delivery: copy
+    role: override
+legacy_sources:
+  - vault/Javi.Dots/GentlemanOpenCode/opencode.json
+  - vault/Javi.Dots/GentlemanOpenCode/themes/gentleman.json
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Shared instructions and orchestrators stay canonical in shared packages; this target only adds OpenCode-specific runtime and theme assets.

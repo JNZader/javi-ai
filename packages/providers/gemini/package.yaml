@@ -3,7 +3,7 @@ id: provider.gemini.core
 provider_id: gemini
 display_name: Gemini CLI
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/providers/gemini
 install_target: target.gemini.user
@@ -32,7 +32,12 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/skills/setup.sh
+    - vault/Javi.Dots/unified-instructions/orchestrator.md
+  extraction_status: slice-wi-019
+  extracted_assets:
+    - targets/user-profile.yaml
 scope:
   owns:
     - provider-specific runtime config and wrappers for Gemini CLI
@@ -43,5 +48,5 @@ scope:
     - bootstrap wrappers owned by javi-dots
     - project-scaffolding assets owned by javi-forge
 notes:
-  - Scaffold only for WI-017; provider profile authority exists before provider asset extraction.
-  - Shared behavior remains canonical in shared packages even when Gemini adds local overrides.
+  - WI-019 records the first Gemini target slice as a generated install recipe instead of duplicating shared instructions.
+  - Shared behavior remains canonical in shared packages even when Gemini adds local header or target transforms.

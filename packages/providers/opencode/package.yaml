@@ -3,7 +3,7 @@ id: provider.opencode.core
 provider_id: opencode
 display_name: OpenCode
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/providers/opencode
 install_target: target.opencode.user
@@ -32,7 +32,14 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/GentlemanOpenCode/opencode.json
+    - vault/Javi.Dots/GentlemanOpenCode/themes/gentleman.json
+  extraction_status: slice-wi-019
+  extracted_assets:
+    - runtime/opencode.json
+    - overrides/gentleman-theme.json
+    - targets/user-profile.yaml
 scope:
   owns:
     - provider-specific runtime config and wrappers for OpenCode
@@ -43,5 +50,5 @@ scope:
     - bootstrap wrappers owned by javi-dots
     - project-scaffolding assets owned by javi-forge
 notes:
-  - Scaffold only for WI-017; provider profile authority exists before provider asset extraction.
+  - WI-019 lands the first OpenCode-specific runtime and theme slice in the provider profile.
   - Shared behavior remains canonical in shared packages even when OpenCode adds local overrides.

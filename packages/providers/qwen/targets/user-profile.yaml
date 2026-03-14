@@ -1,0 +1,29 @@
+kind: provider-install-slice
+provider_id: qwen
+provider_package_id: provider.qwen.core
+install_target: target.qwen.user
+status: partial
+install_mode: sync
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/providers/qwen/runtime/settings.json
+    destination: ~/.qwen/settings.json
+    delivery: copy
+    role: runtime
+  - source: packages/providers/qwen/runtime/QWEN.md
+    destination: ~/.qwen/QWEN.md
+    delivery: copy
+    role: instructions
+legacy_sources:
+  - vault/Javi.Dots/GentlemanQwen/settings.json
+  - vault/Javi.Dots/GentlemanQwen/QWEN.md
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Qwen keeps its provider-specific instruction file in the profile while shared packages remain canonical for reusable behavior.

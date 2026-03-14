@@ -1,0 +1,31 @@
+kind: provider-install-slice
+provider_id: codex
+provider_package_id: provider.codex.core
+install_target: target.codex.user
+status: partial
+install_mode: sync
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/shared/instructions/orchestrator.md
+    destination: ~/CODEX.md
+    delivery: generate
+    role: instructions
+    transform: prepend-codex-header
+legacy_sources:
+  - vault/Javi.Dots/skills/setup.sh
+  - vault/Javi.Dots/unified-instructions/orchestrator.md
+generated_header: |
+  # OpenAI Codex Instructions
+
+  > Auto-generated orchestrator for OpenAI Codex
+  > Run `./skills/setup.sh --install-codex-orchestrator` to regenerate
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Codex continues to assemble shared instructions from canonical shared packages rather than storing a duplicated full copy inside the provider profile.

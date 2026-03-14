@@ -3,7 +3,7 @@ id: provider.claude.core
 provider_id: claude
 display_name: Claude Code
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/providers/claude
 install_target: target.claude.user
@@ -32,7 +32,16 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/GentlemanClaude/settings.json
+    - vault/Javi.Dots/GentlemanClaude/statusline.sh
+    - vault/Javi.Dots/GentlemanClaude/tweakcc-theme.json
+  extraction_status: slice-wi-019
+  extracted_assets:
+    - runtime/settings.json
+    - overrides/statusline.sh
+    - overrides/tweakcc-theme.json
+    - targets/user-profile.yaml
 scope:
   owns:
     - provider-specific runtime config and wrappers for Claude Code
@@ -43,5 +52,5 @@ scope:
     - bootstrap wrappers owned by javi-dots
     - project-scaffolding assets owned by javi-forge
 notes:
-  - Scaffold only for WI-017; provider profile authority exists before provider asset extraction.
+  - WI-019 lands the first Claude-specific runtime and override slice in the provider profile.
   - Shared behavior remains canonical in shared packages even when Claude adds local overrides.

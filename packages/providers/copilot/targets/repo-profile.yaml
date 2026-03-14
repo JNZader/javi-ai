@@ -1,0 +1,25 @@
+kind: provider-install-slice
+provider_id: copilot
+provider_package_id: provider.copilot.core
+install_target: target.copilot.repo
+status: partial
+install_mode: generate
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/shared/instructions/orchestrator.md
+    destination: ${repo}/.github/copilot-instructions.md
+    delivery: generate
+    role: instructions
+legacy_sources:
+  - vault/Javi.Dots/skills/setup.sh
+  - vault/Javi.Dots/unified-instructions/orchestrator.md
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Copilot keeps a repo-scoped generated target while reusable behavior stays canonical in shared packages.

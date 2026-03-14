@@ -3,7 +3,7 @@ id: provider.copilot.core
 provider_id: copilot
 display_name: GitHub Copilot
 version: 0.1.0
-status: scaffold
+status: partial
 owner: javi-ai
 canonical_path: packages/providers/copilot
 install_target: target.copilot.repo
@@ -32,7 +32,12 @@ lineage:
     - delta/javi-dots
     - delta/agentes-ia
     - delta/project-starter-framework
-  extraction_status: pending-curation
+  legacy_sources:
+    - vault/Javi.Dots/skills/setup.sh
+    - vault/Javi.Dots/unified-instructions/orchestrator.md
+  extraction_status: slice-wi-019
+  extracted_assets:
+    - targets/repo-profile.yaml
 scope:
   owns:
     - provider-specific runtime config and wrappers for GitHub Copilot
@@ -43,5 +48,5 @@ scope:
     - bootstrap wrappers owned by javi-dots
     - project-scaffolding assets owned by javi-forge
 notes:
-  - Scaffold only for WI-017; provider profile authority exists before provider asset extraction.
-  - Shared behavior remains canonical in shared packages even when Copilot adds local overrides.
+  - WI-019 records the first Copilot target slice as a repo-scoped generated install recipe.
+  - Shared behavior remains canonical in shared packages even when Copilot adds local target transforms.

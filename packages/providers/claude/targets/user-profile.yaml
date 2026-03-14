@@ -1,0 +1,34 @@
+kind: provider-install-slice
+provider_id: claude
+provider_package_id: provider.claude.core
+install_target: target.claude.user
+status: partial
+install_mode: sync
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/providers/claude/runtime/settings.json
+    destination: ~/.claude/settings.json
+    delivery: copy
+    role: runtime
+  - source: packages/providers/claude/overrides/statusline.sh
+    destination: ~/.claude/statusline.sh
+    delivery: copy
+    role: override
+  - source: packages/providers/claude/overrides/tweakcc-theme.json
+    destination: ~/.claude/tweakcc-theme.json
+    delivery: copy
+    role: override
+legacy_sources:
+  - vault/Javi.Dots/GentlemanClaude/settings.json
+  - vault/Javi.Dots/GentlemanClaude/statusline.sh
+  - vault/Javi.Dots/GentlemanClaude/tweakcc-theme.json
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Shared instructions remain canonical in shared.instructions; this target only adds Claude-specific runtime and override assets.

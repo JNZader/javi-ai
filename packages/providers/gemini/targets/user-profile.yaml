@@ -1,0 +1,31 @@
+kind: provider-install-slice
+provider_id: gemini
+provider_package_id: provider.gemini.core
+install_target: target.gemini.user
+status: partial
+install_mode: sync
+shared_inputs:
+  - shared.instructions
+  - shared.agents
+  - shared.skills
+  - shared.hooks
+  - shared.commands
+  - shared.mcp
+  - shared.memory
+asset_mappings:
+  - source: packages/shared/instructions/orchestrator.md
+    destination: ~/GEMINI.md
+    delivery: generate
+    role: instructions
+    transform: prepend-gemini-header
+legacy_sources:
+  - vault/Javi.Dots/skills/setup.sh
+  - vault/Javi.Dots/unified-instructions/orchestrator.md
+generated_header: |
+  # Gemini CLI Instructions
+
+  > Auto-generated orchestrator for Gemini CLI
+  > Run `./skills/setup.sh --install-gemini-orchestrator` to regenerate
+notes:
+  - First provider-profile slice extracted in WI-019.
+  - Gemini continues to assemble shared instructions from canonical shared packages rather than storing a duplicated full copy inside the provider profile.
