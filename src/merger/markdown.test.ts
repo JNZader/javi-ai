@@ -210,4 +210,43 @@ describe('mergeMarkdownFile (integration)', () => {
     expect(result.split(MARKER_START).length - 1).toBe(1)
     expect(result.split(MARKER_END).length - 1).toBe(1)
   })
+
+  it('both startIdx and endIdx must be present for replace (only end marker missing → appends)', async () => {
+    // Tests that startIdx !== -1 && endIdx !== -1 is a conjunction (both required)
+    const { srcFile, tgtFile } = setup()
+    await fs.ensureDir(tmpDir)
+
+    // Has END marker but no START marker
+    const contentWithOnlyEnd = `# Header\n${MARKER_END}\nFooter`
+    await fs.writeFile(tgtFile, contentWithOnlyEnd, 'utf-8')
+    await fs.writeFile(srcFile, 'New content', 'utf-8')
+
+    await mergeMarkdownFile(tgtFile, srcFile)
+
+    const result = await fs.readFile(tgtFile, 'utf-8')
+    // Should APPEND (no replace), because startIdx === -1
+    expect(result).toContain('# Header')
+    expect(result).toContain(MARKER_END)
+    // Content appended at the end
+    expect(result).toContain('New content')
+  })
+
+  it('marker replacement: content between markers is exactly replaced (no extra content)', async () => {
+    const { srcFile, tgtFile } = setup()
+    await fs.ensureDir(tmpDir)
+
+    const before = '# Before\n'
+    const oldInner = 'Old managed content\nMultiple lines\n'
+    const existing = `${before}${MARKER_START}\n${oldInner}${MARKER_END}\n# After\n`
+    await fs.writeFile(tgtFile, existing, 'utf-8')
+    await fs.writeFile(srcFile, 'New managed content', 'utf-8')
+
+    await mergeMarkdownFile(tgtFile, srcFile)
+
+    const result = await fs.readFile(tgtFile, 'utf-8')
+    expect(result).not.toContain(oldInner.trim())
+    expect(result).toContain('New managed content')
+    expect(result).toContain('# Before')
+    expect(result).toContain('# After')
+  })
 })

@@ -200,7 +200,7 @@ export async function runDoctor(): Promise<DoctorResult> {
             const stat = await fs.stat(path.join(backupPath, String(f)))
             return stat.isFile() ? 1 : 0
           })
-        )).reduce((a, b) => a + b, 0)
+        )).reduce((a: number, b: number) => a + b, 0)
         backupChecks.push({
           label: backup.replace(/T(\d{2})-(\d{2})-(\d{2})/, 'T$1:$2:$3').slice(0, 19),
           status: 'ok',

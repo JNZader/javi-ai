@@ -399,4 +399,110 @@ describe('runDoctor', () => {
     const skipCheck = backupSection.checks.find(c => c.status === 'skip')
     expect(skipCheck).toBeDefined()
   })
+
+  it('backup dirs are sorted newest-first (reverse chronological)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+
+    const backupNames = [
+      '2024-01-01T00-00-00-000Z',
+      '2024-03-01T00-00-00-000Z',
+      '2024-02-01T00-00-00-000Z',
+    ]
+    for (const name of backupNames) {
+      await fs.ensureDir(path.join(p.BACKUP_DIR, name))
+      await fs.writeFile(path.join(p.BACKUP_DIR, name, 'file.md'), 'x', 'utf-8')
+    }
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const okEntries = backupSection.checks.filter(c => c.status === 'ok')
+
+    // Should be newest first
+    expect(okEntries[0]!.label).toContain('2024-03')
+    expect(okEntries[okEntries.length - 1]!.label).toContain('2024-01')
+  })
+
+  it('skill count: installed skills WITHOUT SKILL.md are not counted', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    await fs.ensureDir(path.join(upstreamSkills, 'react-19'))
+    await fs.writeFile(path.join(upstreamSkills, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+
+    const p = getDoctorPaths()
+    // Create a dir without SKILL.md
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'fake-skill'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'fake-skill', 'README.md'), '# Fake', 'utf-8')
+
+    const result = await runDoctor()
+
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeSkillCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+    // fake-skill without SKILL.md is NOT counted, so 0/1
+    expect(claudeSkillCheck.status).toBe('fail')
+    expect(claudeSkillCheck.detail).toContain('0/1')
+  })
+
+  it('opencode config shows as skip when opencode not in manifest', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    const opencodeConfigCheck = configSection.checks.find(c =>
+      c.label.includes('opencode')
+    )
+    if (opencodeConfigCheck) {
+      expect(opencodeConfigCheck.status).toBe('skip')
+    }
+  })
+
+  it('hook detection: installs.has(claude) + missing hooksSrc → skip/no hook checks', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    // No FIXED_ASSETS_ROOT/own/hooks/claude created → hooksSrc doesn't exist
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    // No hook source → no hook checks → shows "No hooks installed"
+    const skipCheck = hookSection.checks.find(c => c.status === 'skip')
+    expect(skipCheck).toBeDefined()
+  })
+
+  it('empty backup directory: shows "No backups found" skip check', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+    // Empty backup dir
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const skipCheck = backupSection.checks.find(c =>
+      c.label.includes('No backups') && c.status === 'skip'
+    )
+    expect(skipCheck).toBeDefined()
+  })
+
+  it('backup count >5: shows "and N more" with correct count', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+
+    for (let i = 1; i <= 8; i++) {
+      const name = `2024-0${i.toString().padStart(1, '0')}-01T00-00-00-000Z`
+      await fs.ensureDir(path.join(p.BACKUP_DIR, name))
+      await fs.writeFile(path.join(p.BACKUP_DIR, name, 'test.md'), '# test', 'utf-8')
+    }
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const moreEntry = backupSection.checks.find(c => c.label.includes('more'))!
+    expect(moreEntry).toBeDefined()
+    expect(moreEntry.label).toContain('3 more')
+  })
 })

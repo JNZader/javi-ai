@@ -408,4 +408,82 @@ describe('runUninstall', () => {
     expect(result.errors).toHaveLength(1)
     expect(result.errors[0]).toContain('failing item')
   })
+
+  it('findLatestBackup uses the MOST RECENT backup (reverse sort)', async () => {
+    // If backups exist at multiple timestamps, the most recent one should be used
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(configFile, `${MARKER_START}\ncontent\n${MARKER_END}`, 'utf-8')
+
+    // Create two backups — older and newer
+    const olderDir = path.join(p.BACKUP_DIR, '2023-01-01T00-00-00-000Z', 'claude')
+    await fs.ensureDir(olderDir)
+    await fs.writeFile(path.join(olderDir, 'CLAUDE.md'), '# Older backup', 'utf-8')
+
+    const newerDir = path.join(p.BACKUP_DIR, '2024-06-01T10-00-00-000Z', 'claude')
+    await fs.ensureDir(newerDir)
+    await fs.writeFile(path.join(newerDir, 'CLAUDE.md'), '# Newer backup', 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const restoredContent = await fs.readFile(configFile, 'utf-8')
+    // Should restore from the newest backup
+    expect(restoredContent).toBe('# Newer backup')
+  })
+
+  it('config-section with non-.md file is skipped (no config-section for .json in buildUninstallPlan)', async () => {
+    // This is a structural test: json files don't create config-section items
+    mockReadManifest.mockResolvedValue(makeManifest(['opencode']))
+    const p = getUninstallPaths()
+
+    const configSrc = path.join(FIXED_ASSETS_ROOT, 'configs', 'opencode')
+    await fs.ensureDir(configSrc)
+    await fs.writeFile(path.join(configSrc, 'opencode.json'), '{}', 'utf-8')
+    await fs.ensureDir(p.OPENCODE_CONFIG)
+    await fs.writeFile(path.join(p.OPENCODE_CONFIG, 'opencode.json'), '{}', 'utf-8')
+
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const configSectionItems = items.filter(i => i.type === 'config-section')
+    // JSON files don't get config-section items
+    expect(configSectionItems).toHaveLength(0)
+  })
+
+  it('buildUninstallPlan: skills dir is only included if it exists', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+    // Do NOT create CLAUDE_SKILLS dir — it doesn't exist
+
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const skillsItems = items.filter(i => i.type === 'skills-dir')
+    expect(skillsItems).toHaveLength(0)
+  })
+
+  it('config-section: before/after trim is applied (trimEnd before, trimStart after)', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    // Content with trailing whitespace before marker and leading whitespace after
+    const content = `# Header\n\n\n${MARKER_START}\nManaged\n${MARKER_END}\n\n\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const remaining = await fs.readFile(configFile, 'utf-8')
+    // Both parts should be present
+    expect(remaining).toContain('# Header')
+    expect(remaining).toContain('# Footer')
+    expect(remaining).not.toContain(MARKER_START)
+  })
 })

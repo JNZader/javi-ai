@@ -1,5 +1,9 @@
 {
   "testRunner": "vitest",
+  "plugins": [
+    "@stryker-mutator/vitest-runner",
+    "@stryker-mutator/typescript-checker"
+  ],
   "mutate": [
     "src/merger/json.ts",
     "src/merger/markdown.ts",
