@@ -1,0 +1,48 @@
+{
+  "name": "javi-ai",
+  "version": "0.1.0",
+  "description": "AI development layer installer — skills, orchestrators, and configs for Claude, OpenCode, Gemini, Qwen, Codex, and Copilot",
+  "type": "module",
+  "bin": {
+    "javi-ai": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.tsx",
+    "start": "node dist/index.js",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "claude",
+    "opencode",
+    "skills",
+    "developer-tools"
+  ],
+  "author": "JNZader",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JNZader/javi-ai"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "fs-extra": "^11.3.4",
+    "glob": "^13.0.6",
+    "ink": "^6.8.0",
+    "meow": "^14.1.0",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/glob": "^9.0.0",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
