@@ -142,3 +142,50 @@ describe('writeManifest', () => {
     expect(read).toEqual(manifest)
   })
 })
+
+describe('readManifest — fresh copy (surviving mutant: DEFAULT_MANIFEST spread)', () => {
+  beforeEach(async () => {
+    await fs.remove(MOCK_MANIFEST_PATH)
+    await fs.remove(MOCK_TMPBASE)
+    await fs.ensureDir(MOCK_TMPBASE)
+  })
+
+  afterEach(async () => {
+    await fs.remove(MOCK_MANIFEST_PATH)
+  })
+
+  it('returns a fresh copy each time — mutating result does not affect subsequent call', async () => {
+    // First call: get the default manifest
+    const first = await readManifest()
+    // Mutate it
+    first.clis.push('claude' as import('../types/index.js').CLI)
+    first.version = 'MUTATED'
+
+    // Second call should return a fresh default (unaffected)
+    const second = await readManifest()
+    expect(second.clis).toEqual([])
+    expect(second.version).not.toBe('MUTATED')
+  })
+
+  it('two calls return structurally equal but distinct objects', async () => {
+    const a = await readManifest()
+    const b = await readManifest()
+    expect(a).toEqual(b)
+    expect(a).not.toBe(b) // different references
+    expect(a.clis).not.toBe(b.clis) // arrays are also distinct
+  })
+
+  it('default manifest has empty skills object — mutating it does not leak to next call', async () => {
+    const first = await readManifest()
+    first.skills['hack'] = {
+      name: 'hack',
+      version: '0',
+      source: 'own',
+      installedAt: new Date().toISOString(),
+    }
+
+    const second = await readManifest()
+    expect(second.skills).toEqual({})
+    expect('hack' in second.skills).toBe(false)
+  })
+})

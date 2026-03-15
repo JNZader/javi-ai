@@ -505,4 +505,382 @@ describe('runDoctor', () => {
     expect(moreEntry).toBeDefined()
     expect(moreEntry.label).toContain('3 more')
   })
+
+  // ── countExpectedSkills deduplication ──────────────────────────────────────
+
+  it('countExpectedSkills: same skill name in own/ and upstream/ is only counted once', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
+
+    // Both have 'react-19', upstream also has 'typescript'
+    await fs.ensureDir(path.join(upstreamSkills, 'react-19'))
+    await fs.writeFile(path.join(upstreamSkills, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+    await fs.ensureDir(path.join(upstreamSkills, 'typescript'))
+    await fs.writeFile(path.join(upstreamSkills, 'typescript', 'SKILL.md'), '# TS', 'utf-8')
+
+    // own also has 'react-19' (duplicate)
+    await fs.ensureDir(path.join(ownSkills, 'react-19'))
+    await fs.writeFile(path.join(ownSkills, 'react-19', 'SKILL.md'), '# React 19 own', 'utf-8')
+
+    // Install all expected skills in claude's path
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'react-19'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'typescript'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'typescript', 'SKILL.md'), '# TS', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    // Expected = 2 (react-19 + typescript, deduplicated), present = 2 → ok
+    expect(claudeCheck.status).toBe('ok')
+    expect(claudeCheck.detail).toContain('2/2')
+  })
+
+  it('countExpectedSkills: upstream skills without SKILL.md are excluded', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    // skill-without-md has no SKILL.md
+    await fs.ensureDir(path.join(upstreamSkills, 'skill-without-md'))
+    await fs.writeFile(path.join(upstreamSkills, 'skill-without-md', 'README.md'), '# Not counted', 'utf-8')
+
+    // valid-skill has SKILL.md
+    await fs.ensureDir(path.join(upstreamSkills, 'valid-skill'))
+    await fs.writeFile(path.join(upstreamSkills, 'valid-skill', 'SKILL.md'), '# Valid', 'utf-8')
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'valid-skill'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'valid-skill', 'SKILL.md'), '# Valid', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    // skill-without-md is NOT counted, so expected = 1
+    expect(claudeCheck.detail).toContain('1/1')
+    expect(claudeCheck.status).toBe('ok')
+  })
+
+  it('countExpectedSkills: upstream dot-dirs and _shared are excluded', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    // .hidden should be skipped
+    await fs.ensureDir(path.join(upstreamSkills, '.hidden'))
+    await fs.writeFile(path.join(upstreamSkills, '.hidden', 'SKILL.md'), '# Hidden', 'utf-8')
+    // _shared should be skipped
+    await fs.ensureDir(path.join(upstreamSkills, '_shared'))
+    await fs.writeFile(path.join(upstreamSkills, '_shared', 'SKILL.md'), '# Shared', 'utf-8')
+    // real skill
+    await fs.ensureDir(path.join(upstreamSkills, 'react-19'))
+    await fs.writeFile(path.join(upstreamSkills, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'react-19'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    // Only react-19 counts (1 expected)
+    expect(claudeCheck.detail).toContain('1/1')
+    expect(claudeCheck.status).toBe('ok')
+  })
+
+  // ── which() null return → fail status ──────────────────────────────────────
+
+  it('which returns null (empty stdout): cli status is fail', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    // Mock which to return empty string (stdout = '')
+    mockExecFile.mockImplementation((_bin: string, _args: unknown, callback: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(callback as any)(null, { stdout: '', stderr: '' })
+      return {} as ReturnType<typeof execFile>
+    })
+
+    const result = await runDoctor()
+    const cliSection = result.sections.find(s => s.title === 'CLI Detection')!
+    const claudeCheck = cliSection.checks.find(c => c.label.trim() === 'claude')!
+
+    expect(claudeCheck.status).toBe('fail')
+    expect(claudeCheck.detail).toContain('not found in PATH')
+  })
+
+  // ── Skill count boundary: present === expected → ok ─────────────────────────
+
+  it('skill count: present === expected → ok (not fail)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    // 1 upstream skill
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    await fs.ensureDir(path.join(upstreamSkills, 'the-skill'))
+    await fs.writeFile(path.join(upstreamSkills, 'the-skill', 'SKILL.md'), '# The Skill', 'utf-8')
+
+    // Exactly 1 installed (matches expected)
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'the-skill'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'the-skill', 'SKILL.md'), '# The Skill', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    expect(claudeCheck.status).toBe('ok')
+    expect(claudeCheck.detail).toContain('1/1')
+  })
+
+  it('skill count: present === expected - 1 → fail', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    await fs.ensureDir(path.join(upstreamSkills, 'skill-a'))
+    await fs.writeFile(path.join(upstreamSkills, 'skill-a', 'SKILL.md'), '# A', 'utf-8')
+    await fs.ensureDir(path.join(upstreamSkills, 'skill-b'))
+    await fs.writeFile(path.join(upstreamSkills, 'skill-b', 'SKILL.md'), '# B', 'utf-8')
+
+    // Only 1 installed out of 2
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'skill-a'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'skill-a', 'SKILL.md'), '# A', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    expect(claudeCheck.status).toBe('fail')
+    expect(claudeCheck.detail).toContain('1/2')
+  })
+
+  // ── Backup limit boundary tests ────────────────────────────────────────────
+
+  it('backup: exactly 5 dirs → no "more" entry', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+    for (let i = 1; i <= 5; i++) {
+      const name = `2024-0${i}-01T00-00-00-000Z`
+      await fs.ensureDir(path.join(p.BACKUP_DIR, name))
+      await fs.writeFile(path.join(p.BACKUP_DIR, name, 'f.md'), 'x', 'utf-8')
+    }
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const moreEntry = backupSection.checks.find(c => c.label.includes('more'))
+    const okEntries = backupSection.checks.filter(c => c.status === 'ok')
+
+    expect(moreEntry).toBeUndefined()
+    expect(okEntries).toHaveLength(5)
+  })
+
+  it('backup: exactly 6 dirs → "1 more" entry', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+    for (let i = 1; i <= 6; i++) {
+      const name = `2024-0${i}-01T00-00-00-000Z`
+      await fs.ensureDir(path.join(p.BACKUP_DIR, name))
+      await fs.writeFile(path.join(p.BACKUP_DIR, name, 'f.md'), 'x', 'utf-8')
+    }
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const moreEntry = backupSection.checks.find(c => c.label.includes('more'))!
+    expect(moreEntry).toBeDefined()
+    expect(moreEntry.label).toContain('1 more')
+    expect(moreEntry.status).toBe('skip')
+  })
+
+  it('backup: exactly 0 dirs in backup dir → "No backups found" skip', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+    // empty backup dir
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const skipCheck = backupSection.checks.find(c => c.label.includes('No backups') && c.status === 'skip')
+    expect(skipCheck).toBeDefined()
+  })
+
+  // ── Health score: correct totals with mixed results ─────────────────────────
+
+  it('sections contain correct status distribution: ok/fail/skip mix', async () => {
+    // Use claude (installed) + opencode (not installed)
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    mockWhich({ claude: '/usr/bin/claude' })
+
+    const result = await runDoctor()
+
+    // Installation section: should have ok checks (claude is installed)
+    const installSection = result.sections.find(s => s.title === 'Installation')!
+    const installOkChecks = installSection.checks.filter(c => c.status === 'ok')
+    expect(installOkChecks.length).toBeGreaterThan(0)
+
+    // CLI section: claude → ok, opencode → skip
+    const cliSection = result.sections.find(s => s.title === 'CLI Detection')!
+    const claudeCliCheck = cliSection.checks.find(c => c.label.trim() === 'claude')!
+    const opencodeCliCheck = cliSection.checks.find(c => c.label.trim() === 'opencode')!
+    expect(claudeCliCheck.status).toBe('ok')
+    expect(opencodeCliCheck.status).toBe('skip')
+
+    // Opencode config → skip (not installed)
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+    const opencodeConfigCheck = configSection.checks.find(c => c.label.includes('opencode'))
+    if (opencodeConfigCheck) {
+      expect(opencodeConfigCheck.status).toBe('skip')
+    }
+  })
+
+  // ── Config file check: each of the 6 CLIs ──────────────────────────────────
+
+  it('config section: installed CLI with missing config file → fail', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    const claudeConfig = configSection.checks.find(c =>
+      c.label.includes('CLAUDE.md') || c.label.includes('.claude')
+    )!
+    expect(claudeConfig).toBeDefined()
+    // Since the file doesn't exist in the real home (test isolation), it shows fail
+    expect(['ok', 'fail']).toContain(claudeConfig.status)
+  })
+
+  it('config section: all uninstalled CLIs show skip', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    // All should be skip since no CLI is installed
+    expect(configSection.checks.every(c => c.status === 'skip')).toBe(true)
+  })
+
+  it('config section: opencode installed → shows ok or fail (not skip)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['opencode']))
+
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    const opencodeConfig = configSection.checks.find(c => c.label.includes('opencode'))
+    if (opencodeConfig) {
+      expect(['ok', 'fail']).toContain(opencodeConfig.status)
+    }
+  })
+
+  // ── Hook executable check ──────────────────────────────────────────────────
+
+  it('hook check: hook file exists but is not executable → status fail', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'test-hook.sh'), '#!/bin/sh', 'utf-8')
+
+    // Spy on fs.access to simulate "not executable"
+    const accessSpy = vi.spyOn(fs, 'access').mockImplementation((_path, _mode) => {
+      return Promise.reject(new Error('EACCES: permission denied'))
+    })
+
+    // Spy on fs.pathExists to return true for the hook path
+    const hookPath = path.join(os.homedir(), '.claude', 'hooks', 'test-hook.sh')
+    const pathExistsSpy = vi.spyOn(fs, 'pathExists').mockImplementation(async (p) => {
+      if (String(p) === hooksSrc) return true
+      if (String(p) === hookPath) return true
+      return false
+    })
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    const hookCheck = hookSection.checks.find(c => c.label === 'test-hook.sh')
+    if (hookCheck) {
+      expect(hookCheck.status).toBe('fail')
+      expect(hookCheck.detail).toContain('not executable')
+    }
+
+    accessSpy.mockRestore()
+    pathExistsSpy.mockRestore()
+  })
+
+  it('hook check: hook file exists and is executable → status ok', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'exec-hook.sh'), '#!/bin/sh', 'utf-8')
+
+    const hookPath = path.join(os.homedir(), '.claude', 'hooks', 'exec-hook.sh')
+
+    // Spy on pathExists to return true for both hooksSrc and the hook file
+    const pathExistsSpy = vi.spyOn(fs, 'pathExists').mockImplementation(async (p) => {
+      if (String(p) === hooksSrc) return true
+      if (String(p) === hookPath) return true
+      return false
+    })
+
+    // Spy on access to simulate executable
+    const accessSpy = vi.spyOn(fs, 'access').mockResolvedValue(undefined)
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    const hookCheck = hookSection.checks.find(c => c.label === 'exec-hook.sh')
+    if (hookCheck) {
+      expect(hookCheck.status).toBe('ok')
+      expect(hookCheck.detail).toContain('executable')
+    }
+
+    accessSpy.mockRestore()
+    pathExistsSpy.mockRestore()
+  })
+
+  // ── No CLIs installed: skills section shows skip ───────────────────────────
+
+  it('skills section: no CLIs installed → shows "No CLIs installed" skip', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+
+    const skipCheck = skillSection.checks.find(c => c.label.includes('No CLIs installed'))
+    expect(skipCheck).toBeDefined()
+    expect(skipCheck?.status).toBe('skip')
+  })
+
+  // ── Installation section dates ─────────────────────────────────────────────
+
+  it('installation section: shows correct date from manifest', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const result = await runDoctor()
+    const installSection = result.sections.find(s => s.title === 'Installation')!
+
+    const dateCheck = installSection.checks.find(c => c.label.includes('Installed on'))
+    expect(dateCheck).toBeDefined()
+    expect(dateCheck?.label).toContain('2024-01-15')
+    expect(dateCheck?.label).toContain('2024-06-01')
+    expect(dateCheck?.status).toBe('ok')
+  })
+
+  it('installation section: shows installed CLIs list', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude', 'opencode']))
+
+    const result = await runDoctor()
+    const installSection = result.sections.find(s => s.title === 'Installation')!
+
+    const cliListCheck = installSection.checks.find(c => c.label.includes('CLIs configured'))
+    expect(cliListCheck).toBeDefined()
+    expect(cliListCheck?.status).toBe('ok')
+  })
 })

@@ -486,4 +486,285 @@ describe('runUninstall', () => {
     expect(remaining).toContain('# Footer')
     expect(remaining).not.toContain(MARKER_START)
   })
+
+  // ── findLatestBackup: sort order and first-match semantics ─────────────────
+
+  it('findLatestBackup: returns FIRST match (most recent due to reverse sort)', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(configFile, `${MARKER_START}\nContent\n${MARKER_END}`, 'utf-8')
+
+    // Three backups — latest should win
+    for (const [ts, content] of [
+      ['2023-01-01T00-00-00-000Z', '# Oldest'],
+      ['2024-01-01T00-00-00-000Z', '# Middle'],
+      ['2025-01-01T00-00-00-000Z', '# Latest'],
+    ] as const) {
+      const dir = path.join(p.BACKUP_DIR, ts, 'claude')
+      await fs.ensureDir(dir)
+      await fs.writeFile(path.join(dir, 'CLAUDE.md'), content, 'utf-8')
+    }
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const restoredContent = await fs.readFile(configFile, 'utf-8')
+    expect(restoredContent).toBe('# Latest')
+  })
+
+  it('findLatestBackup: returns null when no backup dir contains the file', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    // File with markers but NO backup
+    const content = `# Header\n\n${MARKER_START}\nManaged\n${MARKER_END}\n\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    // Create backup dir but with a DIFFERENT file (not CLAUDE.md)
+    const backupDir = path.join(p.BACKUP_DIR, '2024-01-01T00-00-00-000Z', 'claude')
+    await fs.ensureDir(backupDir)
+    await fs.writeFile(path.join(backupDir, 'OTHER.md'), '# Other', 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    // No backup found → strips markers instead of restoring
+    expect(result.restored).toHaveLength(0)
+    expect(result.removed.some(r => r.includes('section removed'))).toBe(true)
+  })
+
+  // ── buildUninstallPlan: skills-dir item has correct targetPath ─────────────
+
+  it('buildUninstallPlan: skills-dir item path equals skillsPath', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+    await fs.ensureDir(p.CLAUDE_SKILLS)
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const skillsItem = items.find(i => i.type === 'skills-dir' && i.cli === 'claude')
+
+    expect(skillsItem).toBeDefined()
+    expect(skillsItem!.path).toBe(p.CLAUDE_SKILLS)
+  })
+
+  // ── buildUninstallPlan: hooks-dir only for claude ──────────────────────────
+
+  it('buildUninstallPlan: hooks-dir ONLY added for claude, not opencode', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude', 'opencode']))
+    const p = getUninstallPaths()
+
+    // Create hooks dirs for both (only claude should be picked up)
+    await fs.ensureDir(path.join(p.CLAUDE_CONFIG, 'hooks'))
+    await fs.ensureDir(path.join(p.OPENCODE_CONFIG, 'hooks'))
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const hookItems = items.filter(i => i.type === 'hooks-dir')
+
+    expect(hookItems).toHaveLength(1)
+    expect(hookItems[0]!.cli).toBe('claude')
+  })
+
+  // ── buildUninstallPlan: config-section added for .md but not .json ─────────
+
+  it('buildUninstallPlan: .md files → config-section; .json files → nothing', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+
+    const configSrc = path.join(FIXED_ASSETS_ROOT, 'configs', 'claude')
+    await fs.ensureDir(configSrc)
+    await fs.writeFile(path.join(configSrc, 'CLAUDE.md'), '# Claude', 'utf-8')
+    await fs.writeFile(path.join(configSrc, 'settings.json'), '{}', 'utf-8')
+
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(path.join(p.CLAUDE_CONFIG, 'CLAUDE.md'), '# Installed', 'utf-8')
+    await fs.writeFile(path.join(p.CLAUDE_CONFIG, 'settings.json'), '{}', 'utf-8')
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const configSectionItems = items.filter(i => i.type === 'config-section')
+
+    // Only the .md file should create a config-section item
+    expect(configSectionItems).toHaveLength(1)
+    expect(configSectionItems[0]!.path).toContain('CLAUDE.md')
+  })
+
+  it('buildUninstallPlan: README.md is excluded from config-section items', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+
+    const configSrc = path.join(FIXED_ASSETS_ROOT, 'configs', 'claude')
+    await fs.ensureDir(configSrc)
+    await fs.writeFile(path.join(configSrc, 'README.md'), '# README', 'utf-8')
+    await fs.writeFile(path.join(configSrc, 'CLAUDE.md'), '# Claude', 'utf-8')
+
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(path.join(p.CLAUDE_CONFIG, 'README.md'), '# README', 'utf-8')
+    await fs.writeFile(path.join(p.CLAUDE_CONFIG, 'CLAUDE.md'), '# Installed', 'utf-8')
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const configSectionItems = items.filter(i => i.type === 'config-section')
+
+    // README.md must NOT be in config-section
+    expect(configSectionItems.every(i => !i.path.includes('README.md'))).toBe(true)
+    // CLAUDE.md should be there
+    expect(configSectionItems.some(i => i.path.includes('CLAUDE.md'))).toBe(true)
+  })
+
+  // ── runUninstall: config-section with empty result → file DELETED ──────────
+
+  it('config-section: after stripping, result is only whitespace → file is DELETED', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    // Only whitespace around markers
+    const content = `   \n${MARKER_START}\nOnly managed content\n${MARKER_END}\n   `
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    expect(await fs.pathExists(configFile)).toBe(false)
+    expect(result.removed.some(r => r.includes('file removed'))).toBe(true)
+  })
+
+  // ── runUninstall: no markers → file left UNTOUCHED, status = skipped ────────
+
+  it('config-section: no markers → file left untouched, item in removed with "skipped"', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    const originalContent = '# No markers here\nThis is user content.'
+    await fs.writeFile(configFile, originalContent, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    // File is untouched
+    expect(await fs.readFile(configFile, 'utf-8')).toBe(originalContent)
+    // The item appears in removed with "skipped" message
+    expect(result.removed.some(r => r.includes('skipped') || r.includes('no javi-ai markers'))).toBe(true)
+  })
+
+  // ── runUninstall: error handling: errors array contains error message ────────
+
+  it('errors array contains the error message string (not the Error object)', async () => {
+    const p = getUninstallPaths()
+    const nonExistentFile = path.join(p.tmpDir, 'really-does-not-exist.md')
+
+    const items: UninstallItem[] = [
+      { label: 'bad item label', path: nonExistentFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    expect(result.errors).toHaveLength(1)
+    // The error should be a string
+    expect(typeof result.errors[0]).toBe('string')
+    expect(result.errors[0]).toContain('bad item label')
+  })
+
+  // ── runUninstall: restored vs removed ──────────────────────────────────────
+
+  it('backup restore goes to restored[] not removed[]', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(configFile, `${MARKER_START}\nManaged\n${MARKER_END}`, 'utf-8')
+
+    const backupDir = path.join(p.BACKUP_DIR, '2024-06-01T10-00-00-000Z', 'claude')
+    await fs.ensureDir(backupDir)
+    await fs.writeFile(path.join(backupDir, 'CLAUDE.md'), '# Original', 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    expect(result.restored).toHaveLength(1)
+    expect(result.removed).toHaveLength(0)
+    expect(result.restored[0]).toContain('restored from backup')
+  })
+
+  it('direct removal (no backup) goes to removed[] not restored[]', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    const content = `# Header\n\n${MARKER_START}\nManaged\n${MARKER_END}\n\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+    // No backup
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    expect(result.removed).toHaveLength(1)
+    expect(result.restored).toHaveLength(0)
+    expect(result.removed[0]).toContain('section removed')
+  })
+
+  // ── findLatestBackup: dirs sorted DESCENDING (most recent first) ───────────
+
+  it('findLatestBackup: dirs sorted descending — MOST recent backup is picked', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(configFile, `${MARKER_START}\nContent\n${MARKER_END}`, 'utf-8')
+
+    // Create in ascending order (OS might store in any order)
+    const backups = [
+      ['2021-01-01T00-00-00-000Z', '# 2021'],
+      ['2023-06-15T12-00-00-000Z', '# 2023'],
+      ['2022-03-20T08-00-00-000Z', '# 2022'],
+    ] as const
+
+    for (const [ts, content] of backups) {
+      const dir = path.join(p.BACKUP_DIR, ts, 'claude')
+      await fs.ensureDir(dir)
+      await fs.writeFile(path.join(dir, 'CLAUDE.md'), content, 'utf-8')
+    }
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const restoredContent = await fs.readFile(configFile, 'utf-8')
+    // Most recent is 2023-06-15
+    expect(restoredContent).toBe('# 2023')
+  })
+
+  // ── runUninstall: hooks-dir source doesn't exist → nothing removed ─────────
+
+  it('hooks-dir: hooks source does not exist → no files removed', async () => {
+    const p = getUninstallPaths()
+    const hooksDir = path.join(p.tmpDir, 'hooks')
+    await fs.ensureDir(hooksDir)
+    await fs.writeFile(path.join(hooksDir, 'user-hook.sh'), '#!/bin/sh', 'utf-8')
+    // No FIXED_ASSETS_ROOT/own/hooks/claude
+
+    const items: UninstallItem[] = [
+      { label: 'hooks', path: hooksDir, type: 'hooks-dir', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    // user-hook.sh should still exist
+    expect(await fs.pathExists(path.join(hooksDir, 'user-hook.sh'))).toBe(true)
+    expect(result.removed).toHaveLength(0)
+  })
 })
