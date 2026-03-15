@@ -13,9 +13,10 @@ type Stage = 'loading' | 'confirm' | 'updating' | 'done' | 'no-install'
 
 interface UpdateProps {
   dryRun?: boolean
+  autoConfirm?: boolean
 }
 
-export default function Update({ dryRun = false }: UpdateProps) {
+export default function Update({ dryRun = false, autoConfirm = false }: UpdateProps) {
   const { exit } = useApp()
   const [stage, setStage] = useState<Stage>('loading')
   const [installedClis, setInstalledClis] = useState<CLI[]>([])
@@ -26,14 +27,30 @@ export default function Update({ dryRun = false }: UpdateProps) {
     readManifest().then(manifest => {
       if (manifest.clis.length === 0) {
         setStage('no-install')
+        if (autoConfirm) setTimeout(() => exit(), 50)
       } else {
         setInstalledClis(manifest.clis)
-        setStage('confirm')
+        if (autoConfirm) {
+          // Auto-start update
+          setStage('updating')
+        } else {
+          setStage('confirm')
+        }
       }
     }).catch(() => {
       setStage('no-install')
+      if (autoConfirm) setTimeout(() => exit(), 50)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-confirm: start update when stage transitions to 'updating' in auto mode
+  useEffect(() => {
+    if (stage === 'updating' && autoConfirm && installedClis.length > 0) {
+      void startUpdate()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, autoConfirm, installedClis])
 
   const startUpdate = async () => {
     setStage('updating')
@@ -49,6 +66,7 @@ export default function Update({ dryRun = false }: UpdateProps) {
       })
     })
     setStage('done')
+    if (autoConfirm) setTimeout(() => exit(), 50)
   }
 
   useInput((input, key) => {
@@ -62,7 +80,7 @@ export default function Update({ dryRun = false }: UpdateProps) {
     if (stage === 'no-install') {
       if (key.return || key.escape) exit()
     }
-  })
+  }, { isActive: !autoConfirm })
 
   const subtitle =
     stage === 'updating' ? 'updating...' :

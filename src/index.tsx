@@ -23,6 +23,7 @@ const cli = meow(`
   Options
     --dry-run       Preview without making changes
     --cli           Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot)
+    --yes           Non-interactive mode (auto-confirm, skip selectors)
     --version       Show version
     --help          Show this help
 
@@ -46,6 +47,7 @@ const cli = meow(`
   importMeta: import.meta,
   flags: {
     dryRun: { type: 'boolean', default: false },
+    yes: { type: 'boolean', default: false, shortFlag: 'y' },
     cli: { type: 'string', default: '' },
     target: { type: 'string', default: 'all' },
     mode: { type: 'string', default: 'overwrite' },
@@ -55,19 +57,21 @@ const cli = meow(`
 
 const subcommand = cli.input[0] ?? 'install'
 
+const nonInteractive = cli.flags.yes || process.env['CI'] === '1'
+
 switch (subcommand) {
   case 'doctor': {
-    render(<Doctor />)
+    render(<Doctor autoExit={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
     break
   }
 
   case 'update': {
-    render(<Update dryRun={cli.flags.dryRun} />)
+    render(<Update dryRun={cli.flags.dryRun} autoConfirm={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
     break
   }
 
   case 'uninstall': {
-    render(<Uninstall />)
+    render(<Uninstall autoConfirm={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
     break
   }
 
@@ -80,7 +84,9 @@ switch (subcommand) {
           projectDir: cli.flags.projectDir,
           dryRun: cli.flags.dryRun,
         }}
-      />
+        autoExit={nonInteractive}
+      />,
+      { exitOnCtrlC: !nonInteractive }
     )
     break
   }
@@ -91,7 +97,10 @@ switch (subcommand) {
       ? (cli.flags.cli.split(',').map(s => s.trim()) as CLI[])
       : undefined
 
-    render(<App dryRun={cli.flags.dryRun} preselectedClis={preselectedClis} />)
+    render(
+      <App dryRun={cli.flags.dryRun} preselectedClis={preselectedClis} autoConfirm={nonInteractive} />,
+      { exitOnCtrlC: !nonInteractive }
+    )
     break
   }
 }

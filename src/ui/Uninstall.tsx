@@ -9,7 +9,11 @@ import { theme } from './theme.js'
 
 type Stage = 'loading' | 'confirm' | 'uninstalling' | 'done' | 'no-install'
 
-export default function Uninstall() {
+interface UninstallProps {
+  autoConfirm?: boolean
+}
+
+export default function Uninstall({ autoConfirm = false }: UninstallProps) {
   const { exit } = useApp()
   const [stage, setStage] = useState<Stage>('loading')
   const [clis, setClis] = useState<CLI[]>([])
@@ -22,17 +26,32 @@ export default function Uninstall() {
       .then(plan => {
         if (plan.clis.length === 0) {
           setStage('no-install')
+          if (autoConfirm) setTimeout(() => exit(), 50)
         } else {
           setClis(plan.clis)
           setItems(plan.items)
-          setStage('confirm')
+          if (autoConfirm) {
+            setStage('uninstalling')
+          } else {
+            setStage('confirm')
+          }
         }
       })
       .catch(e => {
         setError(String(e))
         setStage('no-install')
+        if (autoConfirm) setTimeout(() => exit(), 50)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-confirm: start uninstall when plan is loaded
+  useEffect(() => {
+    if (stage === 'uninstalling' && autoConfirm && items.length > 0) {
+      void doUninstall()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, autoConfirm, items])
 
   const doUninstall = async () => {
     setStage('uninstalling')
@@ -40,9 +59,11 @@ export default function Uninstall() {
       const res = await runUninstall(items)
       setResult(res)
       setStage('done')
+      if (autoConfirm) setTimeout(() => exit(), 50)
     } catch (e) {
       setError(String(e))
       setStage('done')
+      if (autoConfirm) setTimeout(() => exit(), 50)
     }
   }
 
@@ -57,7 +78,7 @@ export default function Uninstall() {
     if (stage === 'no-install' || stage === 'done') {
       if (key.return || key.escape) exit()
     }
-  })
+  }, { isActive: !autoConfirm })
 
   const subtitle =
     stage === 'uninstalling' ? 'uninstalling...' :

@@ -18,7 +18,11 @@ const STATUS_COLOR: Record<CheckStatus, string> = {
   skip: theme.muted,
 }
 
-export default function Doctor() {
+interface DoctorProps {
+  autoExit?: boolean
+}
+
+export default function Doctor({ autoExit = false }: DoctorProps) {
   const { exit } = useApp()
   const [result, setResult] = useState<DoctorResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -29,9 +33,17 @@ export default function Doctor() {
     setResult(null)
     setError(null)
     runDoctor()
-      .then(r => { setResult(r); setLoading(false) })
-      .catch(e => { setError(String(e)); setLoading(false) })
-  }, [])
+      .then(r => {
+        setResult(r)
+        setLoading(false)
+        if (autoExit) setTimeout(() => exit(), 50)
+      })
+      .catch(e => {
+        setError(String(e))
+        setLoading(false)
+        if (autoExit) setTimeout(() => exit(), 50)
+      })
+  }, [autoExit, exit])
 
   useEffect(() => { runCheck() }, [runCheck])
 
@@ -42,7 +54,7 @@ export default function Doctor() {
     if (input.toLowerCase() === 'q' || key.return || key.escape) {
       exit()
     }
-  })
+  }, { isActive: !autoExit })
 
   // Compute health score
   const allChecks = result?.sections.flatMap(s => s.checks) ?? []

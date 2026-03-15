@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Box } from 'ink'
+import React, { useState, useEffect } from 'react'
+import { Box, useApp } from 'ink'
 import CLISelector from './CLISelector.js'
 import FeatureSelector from './FeatureSelector.js'
 import Progress from './Progress.js'
@@ -11,26 +11,34 @@ import type { CLI, Feature, InstallStep } from '../types/index.js'
 
 type Stage = 'welcome' | 'select-cli' | 'select-features' | 'installing' | 'done'
 
+const DEFAULT_FEATURES: Feature[] = ['skills', 'orchestrators', 'configs', 'hooks']
+
 interface AppProps {
   dryRun?: boolean
   preselectedClis?: CLI[]
+  autoConfirm?: boolean
 }
 
-export default function App({ dryRun = false, preselectedClis }: AppProps) {
+export default function App({ dryRun = false, preselectedClis, autoConfirm = false }: AppProps) {
+  const { exit } = useApp()
   const [stage, setStage] = useState<Stage>(
+    autoConfirm && preselectedClis ? 'installing' :
     preselectedClis ? 'select-features' : 'welcome'
   )
   const [selectedClis, setSelectedClis] = useState<CLI[]>(preselectedClis ?? [])
-  const [selectedFeatures, setSelectedFeatures] = useState<Feature[]>(['skills', 'orchestrators', 'configs', 'hooks'])
+  const [selectedFeatures, setSelectedFeatures] = useState<Feature[]>(DEFAULT_FEATURES)
   const [steps, setSteps] = useState<InstallStep[]>([])
   const [startTime] = useState<number>(Date.now())
 
-  const handleCLIConfirm = (clis: CLI[]) => {
-    setSelectedClis(clis)
-    setStage('select-features')
-  }
+  // Auto-confirm: run install immediately when entering 'installing' stage
+  useEffect(() => {
+    if (stage === 'installing' && autoConfirm) {
+      void doInstall(DEFAULT_FEATURES)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleFeatureConfirm = async (features: Feature[]) => {
+  const doInstall = async (features: Feature[]) => {
     setSelectedFeatures(features)
     setStage('installing')
 
@@ -48,6 +56,16 @@ export default function App({ dryRun = false, preselectedClis }: AppProps) {
     )
 
     setStage('done')
+    if (autoConfirm) exit()
+  }
+
+  const handleCLIConfirm = (clis: CLI[]) => {
+    setSelectedClis(clis)
+    setStage('select-features')
+  }
+
+  const handleFeatureConfirm = async (features: Feature[]) => {
+    await doInstall(features)
   }
 
   const subtitle =

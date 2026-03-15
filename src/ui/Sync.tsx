@@ -11,9 +11,10 @@ type Stage = 'syncing' | 'done'
 
 interface SyncProps {
   options: SyncOptions
+  autoExit?: boolean
 }
 
-export default function Sync({ options }: SyncProps) {
+export default function Sync({ options, autoExit = false }: SyncProps) {
   const { exit } = useApp()
   const [stage, setStage] = useState<Stage>('syncing')
   const [steps, setSteps] = useState<SyncStep[]>([])
@@ -34,16 +35,19 @@ export default function Sync({ options }: SyncProps) {
     }).then((result) => {
       setConfigDir(result.configDir)
       setStage('done')
+      if (autoExit) setTimeout(() => exit(), 50)
     }).catch(() => {
       setStage('done')
+      if (autoExit) setTimeout(() => exit(), 50)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useInput((_, key) => {
     if (stage === 'done' && (key.return || key.escape)) {
       exit()
     }
-  })
+  }, { isActive: !autoExit })
 
   const done = steps.filter(s => s.status === 'done').length
   const errors = steps.filter(s => s.status === 'error')
