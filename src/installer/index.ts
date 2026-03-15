@@ -131,7 +131,9 @@ async function installOrchestrators(cli: CLI, configPath: string, dryRun: boolea
   const orchSrc = path.join(ASSETS_ROOT, 'delta', 'orchestrators', cli)
   if (!await fs.pathExists(orchSrc)) return
   if (dryRun) return
-  const agentsDest = path.join(configPath, cli === 'opencode' ? 'agents' : 'agents')
+  const agentsDest = cli === 'opencode'
+    ? path.join(configPath, 'agents')
+    : path.join(configPath, 'agents', cli)
   await fs.ensureDir(agentsDest)
   await fs.copy(orchSrc, agentsDest, { overwrite: true })
 }

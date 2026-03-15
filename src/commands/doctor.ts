@@ -194,9 +194,13 @@ export async function runDoctor(): Promise<DoctorResult> {
     } else {
       for (const backup of backupDirs.slice(0, 5)) {
         const backupPath = path.join(BACKUP_DIR, backup)
-        const files = await fs.readdir(backupPath, { recursive: true }) as string[]
-        const fileCount = files.filter(f => !f.includes(path.sep) ? true : false).length +
-          files.filter(f => !fs.statSync(path.join(backupPath, f)).isDirectory()).length
+        const files = await fs.readdir(backupPath, { recursive: true })
+        const fileCount = (await Promise.all(
+          files.map(async f => {
+            const stat = await fs.stat(path.join(backupPath, String(f)))
+            return stat.isFile() ? 1 : 0
+          })
+        )).reduce((a, b) => a + b, 0)
         backupChecks.push({
           label: backup.replace(/T(\d{2})-(\d{2})-(\d{2})/, 'T$1:$2:$3').slice(0, 19),
           status: 'ok',
