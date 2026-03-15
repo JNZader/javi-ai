@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
+import Spinner from 'ink-spinner'
 import { buildUninstallPlan, runUninstall } from '../commands/uninstall.js'
 import type { UninstallItem, UninstallResult } from '../commands/uninstall.js'
 import type { CLI } from '../types/index.js'
+import Header from './Header.js'
+import { theme } from './theme.js'
 
 type Stage = 'loading' | 'confirm' | 'uninstalling' | 'done' | 'no-install'
 
@@ -56,26 +59,30 @@ export default function Uninstall() {
     }
   })
 
+  const subtitle =
+    stage === 'uninstalling' ? 'uninstalling...' :
+    stage === 'done'         ? 'complete'        :
+    'uninstall'
+
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Title */}
-      <Box marginBottom={1}>
-        <Text bold color="cyan">javi-ai</Text>
-        <Text color="gray"> — uninstall</Text>
-      </Box>
+      <Header subtitle={subtitle} />
 
       {stage === 'loading' && (
-        <Text color="yellow">◌ Building uninstall plan...</Text>
+        <Text color={theme.warning}>
+          <Spinner type="dots" />
+          {' Building uninstall plan...'}
+        </Text>
       )}
 
       {stage === 'no-install' && (
         <Box flexDirection="column">
           {error
-            ? <Text color="red">✗ Error: {error}</Text>
-            : <Text color="red">✗ No javi-ai installation found.</Text>
+            ? <Text color={theme.error}>✗ Error: {error}</Text>
+            : <Text color={theme.error}>✗ No javi-ai installation found.</Text>
           }
           <Box marginTop={1}>
-            <Text color="gray" dimColor>Press Enter to exit</Text>
+            <Text color={theme.muted} dimColor>Press Enter to exit</Text>
           </Box>
         </Box>
       )}
@@ -84,56 +91,59 @@ export default function Uninstall() {
         <Box flexDirection="column">
           <Text>
             The following will be removed for:{' '}
-            <Text bold color="cyan">{clis.join(', ')}</Text>
+            <Text bold color={theme.primary}>{clis.join(', ')}</Text>
           </Text>
           <Box marginTop={1} flexDirection="column">
             {items.map((item, i) => (
-              <Text key={i} color="red">  ✗ {item.label}</Text>
+              <Text key={i} color={theme.error}>  ✗ {item.label}</Text>
             ))}
           </Box>
           <Box marginTop={1}>
-            <Text color="gray" dimColor>
+            <Text color={theme.muted} dimColor>
               Note: Your AI CLIs (claude, opencode, etc.) will NOT be removed.
             </Text>
           </Box>
           <Box marginTop={1}>
             <Text>Continue? </Text>
-            <Text bold color="red">[y/N] </Text>
+            <Text bold color={theme.error}>[y/N] </Text>
           </Box>
         </Box>
       )}
 
       {stage === 'uninstalling' && (
-        <Text color="yellow">◌ Removing javi-ai managed files...</Text>
+        <Text color={theme.warning}>
+          <Spinner type="dots" />
+          {' Removing javi-ai managed files...'}
+        </Text>
       )}
 
       {stage === 'done' && result && (
         <Box flexDirection="column">
-          <Text bold color={result.errors.length > 0 ? 'yellow' : 'green'}>
+          <Text bold color={result.errors.length > 0 ? theme.warning : theme.success}>
             Uninstall complete
           </Text>
           <Box marginTop={1} flexDirection="column">
             {result.removed.map((r, i) => (
-              <Text key={i} color="green">  ✓ {r}</Text>
+              <Text key={i} color={theme.success}>  ✓ {r}</Text>
             ))}
             {result.restored.map((r, i) => (
-              <Text key={`r-${i}`} color="cyan">  ↩ {r}</Text>
+              <Text key={`r-${i}`} color={theme.primary}>  ↩ {r}</Text>
             ))}
             {result.errors.map((e, i) => (
-              <Text key={`e-${i}`} color="red">  ✗ {e}</Text>
+              <Text key={`e-${i}`} color={theme.error}>  ✗ {e}</Text>
             ))}
           </Box>
           <Box marginTop={1}>
-            <Text color="gray" dimColor>Press Enter to exit</Text>
+            <Text color={theme.muted} dimColor>Press Enter to exit</Text>
           </Box>
         </Box>
       )}
 
       {stage === 'done' && error && !result && (
         <Box flexDirection="column">
-          <Text color="red">✗ Uninstall failed: {error}</Text>
+          <Text color={theme.error}>✗ Uninstall failed: {error}</Text>
           <Box marginTop={1}>
-            <Text color="gray" dimColor>Press Enter to exit</Text>
+            <Text color={theme.muted} dimColor>Press Enter to exit</Text>
           </Box>
         </Box>
       )}

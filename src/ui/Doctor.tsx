@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
+import Spinner from 'ink-spinner'
 import { runDoctor } from '../commands/doctor.js'
 import type { DoctorResult, CheckStatus } from '../commands/doctor.js'
+import Header from './Header.js'
+import { theme } from './theme.js'
 
 const STATUS_ICON: Record<CheckStatus, string> = {
   ok:   '✓',
@@ -10,68 +13,99 @@ const STATUS_ICON: Record<CheckStatus, string> = {
 }
 
 const STATUS_COLOR: Record<CheckStatus, string> = {
-  ok:   'green',
-  fail: 'red',
-  skip: 'gray',
+  ok:   theme.success,
+  fail: theme.error,
+  skip: theme.muted,
 }
 
 export default function Doctor() {
   const { exit } = useApp()
   const [result, setResult] = useState<DoctorResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const runCheck = useCallback(() => {
+    setLoading(true)
+    setResult(null)
+    setError(null)
     runDoctor()
-      .then(setResult)
-      .catch(e => setError(String(e)))
+      .then(r => { setResult(r); setLoading(false) })
+      .catch(e => { setError(String(e)); setLoading(false) })
   }, [])
 
-  useInput((_, key) => {
-    if (result !== null || error !== null) {
-      if (key.return || key.escape || key.ctrl && _.toLowerCase() === 'c') {
-        exit()
-      }
+  useEffect(() => { runCheck() }, [runCheck])
+
+  useInput((input, key) => {
+    if (input.toLowerCase() === 'r') {
+      runCheck()
+    }
+    if (input.toLowerCase() === 'q' || key.return || key.escape) {
+      exit()
     }
   })
 
+  // Compute health score
+  const allChecks = result?.sections.flatMap(s => s.checks) ?? []
+  const passed  = allChecks.filter(c => c.status === 'ok').length
+  const total   = allChecks.filter(c => c.status !== 'skip').length
+
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Title */}
-      <Box marginBottom={1}>
-        <Text bold color="cyan">javi-ai</Text>
-        <Text color="gray"> — doctor</Text>
-      </Box>
+      <Header subtitle="doctor" />
 
-      {!result && !error && (
-        <Text color="yellow">◌ Running checks...</Text>
+      {loading && (
+        <Text color={theme.warning}>
+          <Spinner type="dots" />
+          {' Running checks...'}
+        </Text>
       )}
 
       {error && (
-        <Text color="red">✗ Error: {error}</Text>
+        <Text color={theme.error}>✗ Error: {error}</Text>
       )}
 
-      {result && result.sections.map((section, si) => (
-        <Box key={si} flexDirection="column" marginBottom={1}>
-          <Text bold color="white">  {section.title}</Text>
-          {section.checks.map((check, ci) => (
-            <Box key={ci}>
-              <Text color={STATUS_COLOR[check.status] as any}>
-                {'  '}
-                {STATUS_ICON[check.status]}
-                {' '}
-                {check.label}
-                {check.detail
-                  ? <Text color="gray" dimColor>{'  '}{check.detail}</Text>
-                  : null}
-              </Text>
-            </Box>
-          ))}
-        </Box>
-      ))}
+      {result && (
+        <Box flexDirection="column">
+          {/* Health score */}
+          <Box marginBottom={1}>
+            <Text bold>Health: </Text>
+            <Text bold color={passed === total ? theme.success : theme.warning}>
+              {passed}/{total} checks passed
+            </Text>
+          </Box>
 
-      {(result || error) && (
+          {result.sections.map((section, si) => {
+            const sectionHasFail = section.checks.some(c => c.status === 'fail')
+            return (
+              <Box key={si} flexDirection="column" marginBottom={1}>
+                <Text bold color={sectionHasFail ? theme.warning : theme.success}>
+                  {'  '}{section.title}
+                </Text>
+                {section.checks.map((check, ci) => (
+                  <Box key={ci}>
+                    <Text color={STATUS_COLOR[check.status] as any}>
+                      {'  '}
+                      {STATUS_ICON[check.status]}
+                      {' '}
+                      {check.label}
+                      {check.detail
+                        ? <Text color={theme.muted} dimColor>{'  '}{check.detail}</Text>
+                        : null}
+                    </Text>
+                  </Box>
+                ))}
+              </Box>
+            )
+          })}
+        </Box>
+      )}
+
+      {/* Bottom hint — always visible after first load */}
+      {!loading && (
         <Box marginTop={1}>
-          <Text color="gray" dimColor>Press Enter to exit</Text>
+          <Text color={theme.muted} dimColor>
+            Press r to refresh, q to quit
+          </Text>
         </Box>
       )}
     </Box>
