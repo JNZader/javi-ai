@@ -54,3 +54,17 @@ export const BACKUP_DIR = path.join(HOME, '.javi-ai', 'backups')
 
 export const MARKER_START = '<!-- BEGIN JAVI-AI -->'
 export const MARKER_END = '<!-- END JAVI-AI -->'
+
+// --- Sync constants ---
+
+export const AI_CONFIG_DIR_NAME = '.ai-config'
+
+export const AI_CLI_CONFIG_FILES: Record<string, string> = {
+  claude:   'CLAUDE.md',
+  opencode: 'AGENTS.md',
+  gemini:   'GEMINI.md',
+  codex:    'CODEX.md',
+  copilot:  '.github/copilot-instructions.md',
+}
+
+export const SYNC_TARGETS = ['claude', 'opencode', 'gemini', 'codex', 'copilot'] as const
