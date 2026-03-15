@@ -3,11 +3,20 @@ import React from 'react'
 import { render } from 'ink'
 import meow from 'meow'
 import App from './ui/App.js'
+import Doctor from './ui/Doctor.js'
+import Update from './ui/Update.js'
+import Uninstall from './ui/Uninstall.js'
 import type { CLI } from './types/index.js'
 
 const cli = meow(`
   Usage
-    $ javi-ai [options]
+    $ javi-ai [command] [options]
+
+  Commands
+    install     Install AI development layer (default)
+    doctor      Show health report of current installation
+    update      Re-install configured CLIs with fresh assets
+    uninstall   Remove javi-ai managed files
 
   Options
     --dry-run     Preview what would be installed without making changes
@@ -17,8 +26,11 @@ const cli = meow(`
 
   Examples
     $ javi-ai
-    $ javi-ai --dry-run
-    $ javi-ai --cli claude,opencode
+    $ javi-ai install --dry-run
+    $ javi-ai install --cli claude,opencode
+    $ javi-ai doctor
+    $ javi-ai update
+    $ javi-ai uninstall
 `, {
   importMeta: import.meta,
   flags: {
@@ -27,8 +39,31 @@ const cli = meow(`
   }
 })
 
-const preselectedClis = cli.flags.cli
-  ? (cli.flags.cli.split(',').map(s => s.trim()) as CLI[])
-  : undefined
+const subcommand = cli.input[0] ?? 'install'
 
-render(<App dryRun={cli.flags.dryRun} preselectedClis={preselectedClis} />)
+switch (subcommand) {
+  case 'doctor': {
+    render(<Doctor />)
+    break
+  }
+
+  case 'update': {
+    render(<Update dryRun={cli.flags.dryRun} />)
+    break
+  }
+
+  case 'uninstall': {
+    render(<Uninstall />)
+    break
+  }
+
+  case 'install':
+  default: {
+    const preselectedClis = cli.flags.cli
+      ? (cli.flags.cli.split(',').map(s => s.trim()) as CLI[])
+      : undefined
+
+    render(<App dryRun={cli.flags.dryRun} preselectedClis={preselectedClis} />)
+    break
+  }
+}
