@@ -1,0 +1,70 @@
+{
+  "general": {
+    "vimMode": true,
+    "enableAutoUpdate": true,
+    "gitCoAuthor": false
+  },
+  "ui": {
+    "theme": "Gentleman",
+    "hideTips": false,
+    "hideBanner": false,
+    "showLineNumbers": true,
+    "showCitations": true
+  },
+  "model": {
+    "name": "qwen3-coder-plus",
+    "generationConfig": {
+      "samplingParams": {
+        "temperature": 0.2
+      }
+    }
+  },
+  "context": {
+    "fileName": "QWEN.md",
+    "fileFiltering": {
+      "respectGitIgnore": true,
+      "enableFuzzySearch": true
+    }
+  },
+  "tools": {
+    "approvalMode": "default",
+    "useRipgrep": true,
+    "allowed": [
+      "Shell(git status)",
+      "Shell(git diff)",
+      "Shell(git add)",
+      "Shell(git log)",
+      "Shell(git branch)",
+      "Shell(git stash)",
+      "Shell(git fetch)",
+      "Shell(git pull)",
+      "Shell(eza)",
+      "Shell(fd)",
+      "Shell(bat)",
+      "Shell(rg)",
+      "Shell(sd)",
+      "Shell(which)",
+      "Shell(npm)",
+      "Shell(npx)",
+      "Shell(pnpm)",
+      "Shell(bun)",
+      "Shell(yarn)",
+      "Shell(python)",
+      "Shell(pip)",
+      "Shell(uv)",
+      "Shell(uvx)",
+      "Shell(cargo)",
+      "Shell(go)",
+      "Shell(make)",
+      "Shell(docker)",
+      "Shell(gh)",
+      "Shell(brew)",
+      "Shell(pytest)",
+      "Shell(jest)",
+      "Shell(vitest)"
+    ]
+  },
+  "privacy": {
+    "usageStatisticsEnabled": false
+  }
+}
