@@ -1,0 +1,16 @@
+{
+  "testRunner": "vitest",
+  "mutate": [
+    "src/merger/json.ts",
+    "src/merger/markdown.ts",
+    "src/commands/uninstall.ts",
+    "src/installer/index.ts",
+    "src/installer/skills.ts",
+    "src/commands/doctor.ts",
+    "src/commands/update.ts",
+    "src/installer/manifest.ts"
+  ],
+  "checkers": ["typescript"],
+  "tsconfigFile": "tsconfig.json",
+  "thresholds": { "high": 80, "low": 60, "break": 50 }
+}
