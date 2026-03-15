@@ -6,7 +6,8 @@ import App from './ui/App.js'
 import Doctor from './ui/Doctor.js'
 import Update from './ui/Update.js'
 import Uninstall from './ui/Uninstall.js'
-import type { CLI } from './types/index.js'
+import Sync from './ui/Sync.js'
+import type { CLI, SyncTarget, SyncMode } from './types/index.js'
 
 const cli = meow(`
   Usage
@@ -17,12 +18,18 @@ const cli = meow(`
     doctor      Show health report of current installation
     update      Re-install configured CLIs with fresh assets
     uninstall   Remove javi-ai managed files
+    sync        Compile .ai-config/ into per-CLI config files
 
   Options
-    --dry-run     Preview what would be installed without making changes
-    --cli         Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot)
-    --version     Show version
-    --help        Show this help
+    --dry-run       Preview without making changes
+    --cli           Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot)
+    --version       Show version
+    --help          Show this help
+
+  Sync Options
+    --target        CLI target: claude, opencode, gemini, codex, copilot, all (default: all)
+    --mode          Sync mode: overwrite, merge (default: overwrite)
+    --project-dir   Project directory to sync (default: .)
 
   Examples
     $ javi-ai
@@ -31,11 +38,18 @@ const cli = meow(`
     $ javi-ai doctor
     $ javi-ai update
     $ javi-ai uninstall
+    $ javi-ai sync
+    $ javi-ai sync --target claude
+    $ javi-ai sync --mode merge
+    $ javi-ai sync --dry-run --project-dir /path/to/project
 `, {
   importMeta: import.meta,
   flags: {
     dryRun: { type: 'boolean', default: false },
     cli: { type: 'string', default: '' },
+    target: { type: 'string', default: 'all' },
+    mode: { type: 'string', default: 'overwrite' },
+    projectDir: { type: 'string', default: '.' },
   }
 })
 
@@ -54,6 +68,20 @@ switch (subcommand) {
 
   case 'uninstall': {
     render(<Uninstall />)
+    break
+  }
+
+  case 'sync': {
+    render(
+      <Sync
+        options={{
+          target: cli.flags.target as SyncTarget,
+          mode: cli.flags.mode as SyncMode,
+          projectDir: cli.flags.projectDir,
+          dryRun: cli.flags.dryRun,
+        }}
+      />
+    )
     break
   }
 
