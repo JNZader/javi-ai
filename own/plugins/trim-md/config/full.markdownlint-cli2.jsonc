@@ -1,0 +1,49 @@
+{
+  // trim-md FULL config — LLM-optimized markdownlint rules
+  // Used when the project has NO existing markdownlint config.
+  // Each rule documents WHY it matters for agent/LLM token consumption.
+
+  "config": {
+    "default": true,
+
+    // === ENFORCE: Token waste reduction ===
+    // Each of these rules removes bytes that get tokenized but carry zero semantic value.
+
+    "MD009": true,                          // Trailing spaces — invisible bytes that still consume tokens
+    "MD010": true,                          // Hard tabs — tokenize inconsistently across models (1 tab != 1 token)
+    "MD012": { "maximum": 1 },              // Multiple blank lines — each blank line wastes ~1 token
+    "MD047": true,                          // File ends with single newline — prevents tokenizer edge cases
+
+    // === ENFORCE: Heading hierarchy ===
+    // Headings are the #1 structural signal for RAG chunking and LLM section parsing.
+    // Skipped levels or inconsistent styles break semantic hierarchy.
+
+    "MD001": true,                          // Headings increment by one level (H1>H2>H3, never H1>H3)
+    "MD003": { "style": "atx" },            // ATX-style (#) headings only — Setext underlines waste tokens
+    "MD022": { "lines_above": 1, "lines_below": 1 }, // Blank lines around headings — clean chunk boundaries
+    "MD025": true,                          // Single top-level H1 — unambiguous document root
+
+    // === ENFORCE: Structural clarity ===
+    // Clean boundaries around structural elements help LLMs parse document structure correctly.
+
+    "MD031": { "list_items": true },        // Blank lines around fenced code blocks
+    "MD032": true,                          // Blank lines around lists
+    "MD037": true,                          // No spaces inside emphasis markers
+    "MD038": true,                          // No spaces inside code spans
+    "MD039": true,                          // No spaces inside link text
+    "MD046": { "style": "fenced" },         // Fenced code blocks only — indented blocks ambiguous inside lists
+    "MD048": { "style": "backtick" },       // Backtick fences — tildes rare, waste a "novelty" token
+
+    // === DISABLED: Not relevant for LLM consumption ===
+
+    "MD013": false,                         // Line length — hard wraps split semantic units
+    "MD024": false,                         // Duplicate headings — valid in repeated section patterns
+    "MD033": false,                         // Inline HTML — legitimate in code blocks (Mermaid etc.)
+    "MD036": false,                         // Emphasis as heading — used stylistically
+    "MD040": false,                         // Code block language — unfixable automatically
+    "MD041": false,                         // First line H1 — YAML frontmatter files
+    "MD055": false,                         // Table pipe style — cosmetics
+    "MD056": false,                         // Table column count — cosmetics
+    "MD060": false                          // Table column alignment — cosmetics
+  }
+}

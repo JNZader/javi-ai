@@ -1,0 +1,15 @@
+{
+  // trim-md SAFE config — universally non-conflicting rules only
+  // Used when the project already has a markdownlint config.
+  // These 4 rules can NEVER conflict with any project config because
+  // no sane config wants trailing whitespace, hard tabs, or triple blank lines.
+
+  "config": {
+    "default": false,                       // Disable all rules first
+
+    "MD009": true,                          // Trailing spaces — no config wants invisible whitespace
+    "MD010": true,                          // Hard tabs — no config wants tabs in markdown prose
+    "MD012": { "maximum": 1 },              // Multiple blank lines — no config wants 3+ consecutive blanks
+    "MD047": true                           // File ends with newline — no config wants missing final newline
+  }
+}
