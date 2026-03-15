@@ -16,7 +16,7 @@ export async function readManifest(): Promise<Manifest> {
     const raw = await fs.readFile(MANIFEST_PATH, 'utf-8')
     return JSON.parse(raw) as Manifest
   } catch {
-    return { ...DEFAULT_MANIFEST }
+    return { ...DEFAULT_MANIFEST, clis: [], skills: {} }
   }
 }
 

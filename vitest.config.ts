@@ -12,7 +12,6 @@ export default defineConfig({
         'src/index.tsx',
         'src/ui/**',
         'src/types/**',
-        'src/installer/index.ts',
       ],
       thresholds: { lines: 85, branches: 80 },
     },
