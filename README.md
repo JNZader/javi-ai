@@ -8,30 +8,31 @@
 
 ```mermaid
 graph TD
-    subgraph "Shared Packages"
-        SI[shared.instructions]
-        SA[shared.agents]
-        SK[shared.skills]
-        SH[shared.hooks]
-        SC[shared.commands]
-        SM[shared.mcp]
-        SME[shared.memory]
+    subgraph SHARED["Shared Packages (cross-provider)"]
+        direction LR
+        SI["shared.instructions\nAGENTS.md, orchestrator.md"]
+        SA["shared.agents\n9 domain orchestrators"]
+        SK["shared.skills\n16+ tech skills"]
+        SH["shared.hooks\ncomment-check · todo-tracker"]
+        SC["shared.commands\n8 SDD slash-commands"]
+        SM["shared.mcp\nMCP server templates"]
+        SME["shared.memory\nEngram integration"]
     end
 
-    subgraph "Provider Profiles"
-        PC[provider.claude.core]
-        PO[provider.opencode.core]
-        PG[provider.gemini.core]
-        PQ[provider.qwen.core]
-        PX[provider.codex.core]
-        PP[provider.copilot.core]
+    subgraph PROVIDERS["Provider Profiles"]
+        PC["provider.claude.core\n→ target.claude.user"]
+        PO["provider.opencode.core\n→ target.opencode.user"]
+        PG["provider.gemini.core\n→ target.gemini.user"]
+        PQ["provider.qwen.core\n→ target.qwen.user"]
+        PX["provider.codex.core\n→ target.codex.user"]
+        PP["provider.copilot.core\n→ target.copilot.repo"]
     end
 
-    subgraph "Project Packages"
-        PAI[project.ai.instructions]
-        PS[project.sdd.base]
-        PME[project.memory.engram]
-        PR[project.ai.review]
+    subgraph PROJECT["Project-facing Packages"]
+        PAI["project.ai.instructions\nProvider-neutral AI setup"]
+        PS["project.sdd.base\nSDD workflow for repos"]
+        PME["project.memory.engram\nPersistent memory config"]
+        PR["project.ai.review\nAI-assisted code review"]
     end
 
     SI --> PC & PO & PG & PQ & PX & PP
@@ -46,14 +47,25 @@ graph TD
     SI & SME --> PME
     SH & SA & SI --> PR
 
-    PC --> T1[target.claude.user]
-    PO --> T2[target.opencode.user]
-    PG --> T3[target.gemini.user]
-    PQ --> T4[target.qwen.user]
-    PX --> T5[target.codex.user]
-    PP --> T6[target.copilot.repo]
+    PAI & PS & PME & PR -->|consumed by| FORGE["javi-forge\ntemplates & generators"]
+```
 
-    PAI & PS & PME & PR --> FG[javi-forge\nAI Integrations]
+---
+
+## Provider Parity Matrix
+
+```mermaid
+graph LR
+    subgraph INSTALL["install-profiles.sh"]
+        CLI["--provider\n--target\n--package\n--home"]
+    end
+
+    INSTALL --> C["Claude Code\n~/.claude/\nsettings.json\nstatusline.sh\ntweakcc-theme.json"]
+    INSTALL --> O["OpenCode\n~/.config/opencode/\nopencode.json\ncommands/"]
+    INSTALL --> G["Gemini CLI\n~/.gemini/\nGEMINI.md"]
+    INSTALL --> Q["Qwen Code\n~/.config/qwen/\nQWEN.md"]
+    INSTALL --> X["Codex CLI\n~/.codex/\nAGENTS.md"]
+    INSTALL --> P["GitHub Copilot\n.github/copilot/\ninstructions.md"]
 ```
 
 ---
@@ -87,7 +99,7 @@ graph TD
 
 ## Project-facing Packages
 
-For generated repositories that want AI capabilities without coupling to specific providers:
+For generated repositories that want AI capabilities without coupling to a specific provider:
 
 | Package ID | Composes from | Purpose |
 |-----------|---------------|---------|
