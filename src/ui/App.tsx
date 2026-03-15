@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
-import { Box, Text, useApp } from 'ink'
+import { Box } from 'ink'
 import CLISelector from './CLISelector.js'
 import FeatureSelector from './FeatureSelector.js'
 import Progress from './Progress.js'
 import Summary from './Summary.js'
+import Welcome from './Welcome.js'
+import Header from './Header.js'
 import { runInstall } from '../installer/index.js'
 import type { CLI, Feature, InstallStep } from '../types/index.js'
 
-type Stage = 'select-cli' | 'select-features' | 'installing' | 'done'
+type Stage = 'welcome' | 'select-cli' | 'select-features' | 'installing' | 'done'
 
 interface AppProps {
   dryRun?: boolean
@@ -15,11 +17,13 @@ interface AppProps {
 }
 
 export default function App({ dryRun = false, preselectedClis }: AppProps) {
-  const { exit } = useApp()
-  const [stage, setStage] = useState<Stage>(preselectedClis ? 'select-features' : 'select-cli')
+  const [stage, setStage] = useState<Stage>(
+    preselectedClis ? 'select-features' : 'welcome'
+  )
   const [selectedClis, setSelectedClis] = useState<CLI[]>(preselectedClis ?? [])
   const [selectedFeatures, setSelectedFeatures] = useState<Feature[]>(['skills', 'orchestrators', 'configs', 'hooks'])
   const [steps, setSteps] = useState<InstallStep[]>([])
+  const [startTime] = useState<number>(Date.now())
 
   const handleCLIConfirm = (clis: CLI[]) => {
     setSelectedClis(clis)
@@ -46,16 +50,18 @@ export default function App({ dryRun = false, preselectedClis }: AppProps) {
     setStage('done')
   }
 
-  const handleDone = () => exit()
+  const subtitle =
+    stage === 'installing' ? 'installing...' :
+    stage === 'done'       ? 'complete'      :
+    undefined
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1}>
-        <Text bold color="cyan">javi-ai</Text>
-        <Text color="gray"> — AI development layer installer</Text>
-        {dryRun && <Text color="yellow"> [DRY RUN]</Text>}
-      </Box>
+      {stage !== 'welcome' && <Header subtitle={subtitle} dryRun={dryRun} />}
 
+      {stage === 'welcome' && (
+        <Welcome onDone={() => setStage('select-cli')} />
+      )}
       {stage === 'select-cli' && (
         <CLISelector onConfirm={handleCLIConfirm} />
       )}
@@ -63,10 +69,15 @@ export default function App({ dryRun = false, preselectedClis }: AppProps) {
         <FeatureSelector selectedClis={selectedClis} onConfirm={handleFeatureConfirm} />
       )}
       {stage === 'installing' && (
-        <Progress steps={steps} />
+        <Progress steps={steps} selectedClis={selectedClis} onDone={() => setStage('done')} />
       )}
       {stage === 'done' && (
-        <Summary steps={steps} dryRun={dryRun} onExit={handleDone} />
+        <Summary
+          steps={steps}
+          dryRun={dryRun}
+          selectedClis={selectedClis}
+          elapsedMs={Date.now() - startTime}
+        />
       )}
     </Box>
   )
