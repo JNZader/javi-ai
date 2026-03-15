@@ -1,3 +1,28 @@
 node_modules/
 dist/
+
+# TypeScript
 *.js.map
+*.d.ts.map
+
+# Test coverage reports (generated, not source)
+coverage/
+
+# Stryker mutation testing (generated, not source)
+.stryker-tmp/
+reports/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
