@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
+import Spinner from 'ink-spinner'
 import { runUpdate } from '../commands/update.js'
 import Progress from './Progress.js'
 import Summary from './Summary.js'
+import Header from './Header.js'
 import { readManifest } from '../installer/manifest.js'
 import type { CLI, InstallStep } from '../types/index.js'
+import { theme } from './theme.js'
 
 type Stage = 'loading' | 'confirm' | 'updating' | 'done' | 'no-install'
 
@@ -17,8 +20,8 @@ export default function Update({ dryRun = false }: UpdateProps) {
   const [stage, setStage] = useState<Stage>('loading')
   const [installedClis, setInstalledClis] = useState<CLI[]>([])
   const [steps, setSteps] = useState<InstallStep[]>([])
+  const [startTime] = useState<number>(Date.now())
 
-  // Load manifest to know which CLIs are installed
   useEffect(() => {
     readManifest().then(manifest => {
       if (manifest.clis.length === 0) {
@@ -48,7 +51,6 @@ export default function Update({ dryRun = false }: UpdateProps) {
     setStage('done')
   }
 
-  // Confirm prompt keyboard handler
   useInput((input, key) => {
     if (stage === 'confirm') {
       if (input.toLowerCase() === 'y' || key.return) {
@@ -62,25 +64,28 @@ export default function Update({ dryRun = false }: UpdateProps) {
     }
   })
 
+  const subtitle =
+    stage === 'updating' ? 'updating...' :
+    stage === 'done'     ? 'complete'    :
+    'update'
+
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Title */}
-      <Box marginBottom={1}>
-        <Text bold color="cyan">javi-ai</Text>
-        <Text color="gray"> — update</Text>
-        {dryRun && <Text color="yellow"> [DRY RUN]</Text>}
-      </Box>
+      <Header subtitle={subtitle} dryRun={dryRun} />
 
       {stage === 'loading' && (
-        <Text color="yellow">◌ Loading manifest...</Text>
+        <Text color={theme.warning}>
+          <Spinner type="dots" />
+          {' Loading manifest...'}
+        </Text>
       )}
 
       {stage === 'no-install' && (
         <Box flexDirection="column">
-          <Text color="red">✗ No javi-ai installation found.</Text>
-          <Text color="gray">Run <Text bold>javi-ai install</Text> first.</Text>
+          <Text color={theme.error}>✗ No javi-ai installation found.</Text>
+          <Text color={theme.muted}>Run <Text bold>javi-ai install</Text> first.</Text>
           <Box marginTop={1}>
-            <Text color="gray" dimColor>Press Enter to exit</Text>
+            <Text color={theme.muted} dimColor>Press Enter to exit</Text>
           </Box>
         </Box>
       )}
@@ -89,9 +94,9 @@ export default function Update({ dryRun = false }: UpdateProps) {
         <Box flexDirection="column">
           <Text>
             Update will re-install for:{' '}
-            <Text bold color="cyan">{installedClis.join(', ')}</Text>
+            <Text bold color={theme.primary}>{installedClis.join(', ')}</Text>
           </Text>
-          <Text color="gray" dimColor>A backup will be created before any changes.</Text>
+          <Text color={theme.muted} dimColor>A backup will be created before any changes.</Text>
           <Box marginTop={1}>
             <Text>Continue? </Text>
             <Text bold>[Y/n] </Text>
@@ -99,10 +104,22 @@ export default function Update({ dryRun = false }: UpdateProps) {
         </Box>
       )}
 
-      {stage === 'updating' && <Progress steps={steps} />}
+      {stage === 'updating' && (
+        <Progress
+          steps={steps}
+          selectedClis={installedClis}
+          onDone={() => setStage('done')}
+        />
+      )}
 
       {stage === 'done' && (
-        <Summary steps={steps} dryRun={dryRun} onExit={() => exit()} />
+        <Summary
+          steps={steps}
+          dryRun={dryRun}
+          selectedClis={installedClis}
+          elapsedMs={Date.now() - startTime}
+          onExit={() => exit()}
+        />
       )}
     </Box>
   )
