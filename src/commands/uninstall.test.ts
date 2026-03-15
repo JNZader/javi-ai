@@ -767,4 +767,199 @@ describe('runUninstall', () => {
     expect(await fs.pathExists(path.join(hooksDir, 'user-hook.sh'))).toBe(true)
     expect(result.removed).toHaveLength(0)
   })
+
+  // ── Additional targeted tests for surviving string/condition mutants ────────
+
+  it('buildUninstallPlan: skills-dir item label contains "skills"', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+    await fs.ensureDir(p.CLAUDE_SKILLS)
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const skillsItem = items.find(i => i.type === 'skills-dir' && i.cli === 'claude')
+
+    expect(skillsItem?.label).toBeTruthy()
+    expect(skillsItem?.label).toContain('skills')
+  })
+
+  it('buildUninstallPlan: hooks-dir item label contains "hooks"', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_CONFIG, 'hooks'))
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const hooksItem = items.find(i => i.type === 'hooks-dir')
+
+    expect(hooksItem?.label).toBeTruthy()
+    expect(hooksItem?.label).toContain('hooks')
+  })
+
+  it('buildUninstallPlan: config-section item label contains "javi-ai section"', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+
+    const configSrc = path.join(FIXED_ASSETS_ROOT, 'configs', 'claude')
+    await fs.ensureDir(configSrc)
+    await fs.writeFile(path.join(configSrc, 'CLAUDE.md'), '# Claude', 'utf-8')
+
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(path.join(p.CLAUDE_CONFIG, 'CLAUDE.md'), '# Installed', 'utf-8')
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const configItem = items.find(i => i.type === 'config-section')
+
+    expect(configItem?.label).toBeTruthy()
+    expect(configItem?.label).toContain('javi-ai section')
+  })
+
+  it('hooks-dir item: hooksDir only added when it EXISTS (pathExists check)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+    // Do NOT create hooks dir
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const hookItems = items.filter(i => i.type === 'hooks-dir')
+
+    expect(hookItems).toHaveLength(0)
+  })
+
+  it('config-section dest file must exist to be included', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+    const p = getUninstallPaths()
+
+    const configSrc = path.join(FIXED_ASSETS_ROOT, 'configs', 'claude')
+    await fs.ensureDir(configSrc)
+    await fs.writeFile(path.join(configSrc, 'CLAUDE.md'), '# Claude', 'utf-8')
+
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    // Do NOT create the dest file
+
+    await fs.writeFile(p.MANIFEST_PATH, '{}', 'utf-8')
+
+    const { items } = await buildUninstallPlan()
+    const configItems = items.filter(i => i.type === 'config-section')
+
+    // Since dest doesn't exist, no config-section items
+    expect(configItems).toHaveLength(0)
+  })
+
+  it('runUninstall: section join with \\n\\n (not empty string)', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    const content = `# Header\n\n${MARKER_START}\nManaged\n${MARKER_END}\n\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const remaining = await fs.readFile(configFile, 'utf-8')
+    // If join used '' instead of '\n\n', header and footer would be on same line
+    expect(remaining).toContain('# Header')
+    expect(remaining).toContain('# Footer')
+    // They should be separated by at least a newline
+    expect(remaining.indexOf('# Footer')).toBeGreaterThan(remaining.indexOf('# Header') + '# Header'.length)
+  })
+
+  it('runUninstall: result file ends with \\n after section removal', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    const content = `# Header\n\n${MARKER_START}\nManaged\n${MARKER_END}\n\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    const remaining = await fs.readFile(configFile, 'utf-8')
+    expect(remaining.endsWith('\n')).toBe(true)
+  })
+
+  it('runUninstall hooks: removed path contains hook filename with /', async () => {
+    const p = getUninstallPaths()
+    const hooksDir = path.join(p.tmpDir, 'hooks')
+    await fs.ensureDir(hooksDir)
+    await fs.writeFile(path.join(hooksDir, 'javi-hook.sh'), '#!/bin/sh', 'utf-8')
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'javi-hook.sh'), '#!/bin/sh', 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'hooks', path: hooksDir, type: 'hooks-dir', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    expect(result.removed).toHaveLength(1)
+    expect(result.removed[0]).toContain('/javi-hook.sh')
+  })
+
+  it('runUninstall: startIdx check — only start marker (no end) → no markers found → skipped', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    // Only start marker, no end marker
+    const content = `# Header\n\n${MARKER_START}\nManaged section without end marker\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    // File unchanged (only start marker, no end → treated as no markers)
+    expect(await fs.readFile(configFile, 'utf-8')).toBe(content)
+    expect(result.removed.some(r => r.includes('skipped') || r.includes('no javi-ai markers'))).toBe(true)
+  })
+
+  it('runUninstall: endIdx check — only end marker (no start) → no markers found → skipped', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+
+    // Only end marker, no start marker
+    const content = `# Header\nManaged section without start marker\n${MARKER_END}\n# Footer`
+    await fs.writeFile(configFile, content, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    const result = await runUninstall(items)
+
+    // File unchanged
+    expect(await fs.readFile(configFile, 'utf-8')).toBe(content)
+    expect(result.removed.some(r => r.includes('skipped') || r.includes('no javi-ai markers'))).toBe(true)
+  })
+
+  it('runUninstall config-section: backup overwrite:true replaces file content', async () => {
+    const p = getUninstallPaths()
+    const configFile = path.join(p.CLAUDE_CONFIG, 'CLAUDE.md')
+    await fs.ensureDir(p.CLAUDE_CONFIG)
+    await fs.writeFile(configFile, `${MARKER_START}\nManaged\n${MARKER_END}`, 'utf-8')
+
+    const backupContent = '# Original content from backup'
+    const backupDir = path.join(p.BACKUP_DIR, '2024-06-01T10-00-00-000Z', 'claude')
+    await fs.ensureDir(backupDir)
+    await fs.writeFile(path.join(backupDir, 'CLAUDE.md'), backupContent, 'utf-8')
+
+    const items: UninstallItem[] = [
+      { label: 'claude config', path: configFile, type: 'config-section', cli: 'claude' },
+    ]
+    await runUninstall(items)
+
+    // Should be restored with the exact backup content (overwrite: true)
+    const restoredContent = await fs.readFile(configFile, 'utf-8')
+    expect(restoredContent).toBe(backupContent)
+  })
 })

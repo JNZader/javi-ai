@@ -51,11 +51,23 @@ describe('readManifest', () => {
     expect(result.skills).toEqual({})
   })
 
+  it('returns DEFAULT_MANIFEST version "0.1.0" when file does not exist', async () => {
+    const result = await readManifest()
+    expect(result.version).toBe('0.1.0')
+  })
+
   it('returns DEFAULT_MANIFEST when file has invalid JSON', async () => {
     await fs.writeFile(MOCK_MANIFEST_PATH, 'NOT VALID JSON', 'utf-8')
     const result = await readManifest()
     expect(result).toMatchObject(DEFAULT_MANIFEST_SHAPE)
     expect(result.clis).toEqual([])
+  })
+
+  it('default manifest version is exactly "0.1.0" (not empty) on parse error', async () => {
+    await fs.writeFile(MOCK_MANIFEST_PATH, '{ invalid json', 'utf-8')
+    const result = await readManifest()
+    expect(result.version).toBe('0.1.0')
+    expect(result.version.length).toBeGreaterThan(0)
   })
 
   it('returns parsed manifest when file is valid', async () => {

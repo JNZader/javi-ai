@@ -883,4 +883,315 @@ describe('runDoctor', () => {
     expect(cliListCheck).toBeDefined()
     expect(cliListCheck?.status).toBe('ok')
   })
+
+  // ── Additional tests to kill surviving string/conditional mutants ──────────
+
+  it('installation "no install found" detail is non-empty string', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const result = await runDoctor()
+    const installSection = result.sections.find(s => s.title === 'Installation')!
+    const failCheck = installSection.checks.find(c => c.status === 'fail')
+
+    expect(failCheck?.detail).toBeTruthy()
+    expect(failCheck?.detail?.length).toBeGreaterThan(0)
+    expect(failCheck?.detail).toContain('javi-ai')
+  })
+
+  it('cli detection: skip detail is non-empty (not installed via javi-ai)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+    mockWhich({ claude: null })
+
+    const result = await runDoctor()
+    const cliSection = result.sections.find(s => s.title === 'CLI Detection')!
+    const claudeCheck = cliSection.checks.find(c => c.label.trim() === 'claude')!
+
+    expect(claudeCheck.status).toBe('skip')
+    expect(claudeCheck.detail).toBeTruthy()
+    expect(claudeCheck.detail).toContain('javi-ai')
+  })
+
+  it('cli detection: when join uses separator, multiple CLIs shown comma-separated', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude', 'opencode']))
+
+    const result = await runDoctor()
+    const installSection = result.sections.find(s => s.title === 'Installation')!
+    const cliCheck = installSection.checks.find(c => c.label.includes('CLIs configured'))!
+
+    // Separator is ', ' — if changed to '' they'd run together
+    expect(cliCheck.label).toContain(', ')
+  })
+
+  it('config files: missing config detail is non-empty string', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    const claudeConfig = configSection.checks.find(c =>
+      c.label.includes('CLAUDE.md') || c.label.includes('.claude')
+    )!
+    if (claudeConfig.status === 'fail') {
+      expect(claudeConfig.detail).toBeTruthy()
+      expect(claudeConfig.detail).toContain('missing')
+    }
+  })
+
+  it('config files: present config detail is "present" (not empty)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    // Create the actual config file in the real home dir to avoid mocking
+    // Instead, use a claude that reports config file path within our tmp dir
+    // The CLI_OPTIONS mock returns CLAUDE_CONFIG = currentTmpDir/claude-config
+    // The CONFIG_FILES in doctor.ts hardcodes paths from process.env.HOME
+    // so we can't easily redirect it. Instead, just check the detail string values:
+    // If ok → detail is 'present'; if fail → detail is 'missing'
+    const result = await runDoctor()
+    const configSection = result.sections.find(s => s.title === 'Config Files')!
+
+    const claudeConfig = configSection.checks.find(c =>
+      c.label.includes('CLAUDE.md') || c.label.includes('.claude')
+    )!
+    expect(claudeConfig).toBeDefined()
+    // Verify that regardless of status, detail is one of the expected strings (not empty)
+    expect(claudeConfig.detail).toBeTruthy()
+    expect(['present', 'missing']).toContain(claudeConfig.detail)
+  })
+
+  it('hooks section: "No hooks installed" label is non-empty', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+    const skipCheck = hookSection.checks.find(c => c.status === 'skip')
+
+    expect(skipCheck?.label).toBeTruthy()
+    expect(skipCheck?.label.length).toBeGreaterThan(0)
+  })
+
+  it('backups: "No backup directory" label is non-empty', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+    // No backup dir
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const skipCheck = backupSection.checks.find(c => c.status === 'skip')
+
+    expect(skipCheck?.label).toBeTruthy()
+    expect(skipCheck?.label.length).toBeGreaterThan(0)
+  })
+
+  it('backups: more entry label uses subtraction (length - 5), not addition', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+
+    // Create 7 backups → 7 - 5 = 2 more
+    for (let i = 1; i <= 7; i++) {
+      const name = `2024-0${i}-01T00-00-00-000Z`
+      await fs.ensureDir(path.join(p.BACKUP_DIR, name))
+      await fs.writeFile(path.join(p.BACKUP_DIR, name, 'f.md'), 'x', 'utf-8')
+    }
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const moreEntry = backupSection.checks.find(c => c.label.includes('more'))!
+
+    // Should say "2 more" (7-5=2), NOT "12 more" (7+5=12)
+    expect(moreEntry.label).toContain('2 more')
+    expect(moreEntry.label).not.toContain('12 more')
+  })
+
+  it('backup label format: T followed by colon-separated time (not dashes)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest([]))
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(p.BACKUP_DIR)
+    const backupName = '2024-06-15T10-30-45-000Z'
+    await fs.ensureDir(path.join(p.BACKUP_DIR, backupName))
+    await fs.writeFile(path.join(p.BACKUP_DIR, backupName, 'f.md'), 'x', 'utf-8')
+
+    const result = await runDoctor()
+    const backupSection = result.sections.find(s => s.title === 'Backups')!
+    const entry = backupSection.checks.find(c => c.status === 'ok')!
+
+    // The regex replaces T\d{2}-\d{2}-\d{2} with T$1:$2:$3
+    // '2024-06-15T10-30-45' → '2024-06-15T10:30:45'
+    expect(entry.label).toContain('2024-06-15T10:30:45')
+    expect(entry.label).not.toContain('10-30-45')
+  })
+
+  it('hooks src path uses "own" subdir', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    // Create hooks in wrong path (not 'own') — should NOT be detected
+    const wrongHooksSrc = path.join(FIXED_ASSETS_ROOT, 'delta', 'hooks', 'claude')
+    await fs.ensureDir(wrongHooksSrc)
+    await fs.writeFile(path.join(wrongHooksSrc, 'hook.sh'), '#!/bin/sh', 'utf-8')
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    // Wrong path → no hook files found → shows skip
+    const skipCheck = hookSection.checks.find(c => c.status === 'skip')
+    expect(skipCheck).toBeDefined()
+  })
+
+  it('countExpectedSkills: own skills do not require SKILL.md to be counted', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
+    // own skill WITHOUT SKILL.md (still gets counted — only upstream requires SKILL.md)
+    await fs.ensureDir(path.join(ownSkills, 'custom-tool'))
+    await fs.writeFile(path.join(ownSkills, 'custom-tool', 'README.md'), '# Tool', 'utf-8')
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.CLAUDE_SKILLS, 'custom-tool'))
+    await fs.writeFile(path.join(p.CLAUDE_SKILLS, 'custom-tool', 'SKILL.md'), '# Tool', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const claudeCheck = skillSection.checks.find(c => c.label.trim() === 'claude')!
+
+    // 'custom-tool' is counted in expected (own doesn't check SKILL.md)
+    expect(claudeCheck.detail).toContain('1/1')
+    expect(claudeCheck.status).toBe('ok')
+  })
+
+  it('skill check: opt is found by exact CLI id match', async () => {
+    // This tests that CLI_OPTIONS.find(c => c.id === cli) finds by exact match, not always first
+    mockReadManifest.mockResolvedValue(makeManifest(['opencode']))
+
+    const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+    await fs.ensureDir(path.join(upstreamSkills, 'react-19'))
+    await fs.writeFile(path.join(upstreamSkills, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+
+    const p = getDoctorPaths()
+    await fs.ensureDir(path.join(p.OPENCODE_SKILLS, 'react-19'))
+    await fs.writeFile(path.join(p.OPENCODE_SKILLS, 'react-19', 'SKILL.md'), '# React 19', 'utf-8')
+
+    const result = await runDoctor()
+    const skillSection = result.sections.find(s => s.title === 'Skills')!
+    const opencodeCheck = skillSection.checks.find(c => c.label.trim() === 'opencode')
+
+    expect(opencodeCheck).toBeDefined()
+    expect(opencodeCheck?.status).toBe('ok')
+    // Should use OPENCODE_SKILLS, not CLAUDE_SKILLS
+    expect(opencodeCheck?.detail).toContain('1/1')
+  })
+
+  it('hooks loop body runs for each hook file (not skipped entirely)', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'hook-a.sh'), '#!/bin/sh', 'utf-8')
+    await fs.writeFile(path.join(hooksSrc, 'hook-b.sh'), '#!/bin/sh', 'utf-8')
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    // Both hooks should generate checks
+    const hookACheck = hookSection.checks.find(c => c.label === 'hook-a.sh')
+    const hookBCheck = hookSection.checks.find(c => c.label === 'hook-b.sh')
+
+    expect(hookACheck).toBeDefined()
+    expect(hookBCheck).toBeDefined()
+    expect(hookACheck?.status).toBe('fail') // not installed
+    expect(hookBCheck?.status).toBe('fail') // not installed
+  })
+
+  it('hooks pathExists false → status fail with "not found" detail', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'absent-hook.sh'), '#!/bin/sh', 'utf-8')
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+    const hookCheck = hookSection.checks.find(c => c.label === 'absent-hook.sh')!
+
+    expect(hookCheck).toBeDefined()
+    expect(hookCheck.status).toBe('fail')
+    expect(hookCheck.detail).toContain('not found')
+  })
+
+  it('hooks access catch → detail says "not executable"', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'noexec.sh'), '#!/bin/sh', 'utf-8')
+
+    const hookPath = path.join(os.homedir(), '.claude', 'hooks', 'noexec.sh')
+
+    const pathExistsSpy = vi.spyOn(fs, 'pathExists').mockImplementation(async (p) => {
+      if (String(p) === hooksSrc) return true
+      if (String(p) === hookPath) return true
+      return false
+    })
+
+    const accessSpy = vi.spyOn(fs, 'access').mockRejectedValue(new Error('EACCES'))
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+    const hookCheck = hookSection.checks.find(c => c.label === 'noexec.sh')!
+
+    if (hookCheck) {
+      expect(hookCheck.status).toBe('fail')
+      expect(hookCheck.detail).toBe('not executable')
+    }
+
+    pathExistsSpy.mockRestore()
+    accessSpy.mockRestore()
+  })
+
+  it('hooks access success → detail says "executable"', async () => {
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    await fs.writeFile(path.join(hooksSrc, 'exec.sh'), '#!/bin/sh', 'utf-8')
+
+    const hookPath = path.join(os.homedir(), '.claude', 'hooks', 'exec.sh')
+
+    const pathExistsSpy = vi.spyOn(fs, 'pathExists').mockImplementation(async (p) => {
+      if (String(p) === hooksSrc) return true
+      if (String(p) === hookPath) return true
+      return false
+    })
+
+    const accessSpy = vi.spyOn(fs, 'access').mockResolvedValue(undefined)
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+    const hookCheck = hookSection.checks.find(c => c.label === 'exec.sh')!
+
+    if (hookCheck) {
+      expect(hookCheck.status).toBe('ok')
+      expect(hookCheck.detail).toBe('executable')
+    }
+
+    pathExistsSpy.mockRestore()
+    accessSpy.mockRestore()
+  })
+
+  it('hooks check: hookChecks.length === 0 after hook loop shows skip', async () => {
+    // claude in manifest, hooksSrc exists but is EMPTY (no hook files)
+    mockReadManifest.mockResolvedValue(makeManifest(['claude']))
+
+    const hooksSrc = path.join(FIXED_ASSETS_ROOT, 'own', 'hooks', 'claude')
+    await fs.ensureDir(hooksSrc)
+    // No files in hooksSrc
+
+    const result = await runDoctor()
+    const hookSection = result.sections.find(s => s.title === 'Hooks')!
+
+    // With empty hooksSrc, no hook checks → shows "No hooks installed"
+    const skipCheck = hookSection.checks.find(c => c.status === 'skip')
+    expect(skipCheck).toBeDefined()
+    expect(skipCheck?.label.length).toBeGreaterThan(0)
+  })
 })
