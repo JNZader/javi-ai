@@ -1,105 +1,160 @@
 # javi-ai
 
-Personal AI configuration repository with a layered architecture for managing skills, agents, orchestrators, hooks, plugins, and tool configs across Claude, OpenCode, Qwen, Gemini, Codex, and Copilot.
+> AI development layer — skills, orchestrators, and configs for Claude, OpenCode, Gemini, Qwen, Codex, and Copilot
 
-## Layered Structure
+[![npm version](https://img.shields.io/npm/v/javi-ai.svg)](https://www.npmjs.com/package/javi-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+## Quick Start
+
+```bash
+# Standalone
+npx javi-ai install --cli claude
+
+# Or via the workstation installer
+npx javi-dots
 ```
-javi-ai/
-├── upstream/     # Unmodified assets from external sources (agent-teams-lite, PSF)
-├── delta/        # Javi-modified orchestrators and unified instructions
-├── own/          # Javi-created from scratch (skills, plugins, hooks)
-└── configs/      # Per-tool configuration files (Claude, OpenCode, Qwen, Gemini, Codex, Copilot)
+
+## Supported CLIs
+
+| CLI | Config Path | Skills Path |
+|-----|-------------|-------------|
+| **Claude Code** | `~/.claude/` | `~/.claude/skills/` |
+| **OpenCode** | `~/.config/opencode/` | `~/.config/opencode/skill/` |
+| **Gemini CLI** | `~/.gemini/` | `~/.gemini/skills/` |
+| **Qwen** | `~/.qwen/` | `~/.qwen/skills/` |
+| **Codex CLI** | `~/.codex/` | `~/.codex/skills/` |
+| **GitHub Copilot** | `~/.copilot/` | `~/.copilot/skills/` |
+
+## What's Included
+
+`javi-ai` ships a layered architecture of AI assets. Each layer has a clear purpose and merge priority:
+
+```mermaid
+flowchart TB
+    subgraph "Asset Layers (lowest → highest priority)"
+        direction TB
+        UP["upstream/<br/>37 skills from agent-teams-lite<br/>8 agent groups from PSF"]
+        DL["delta/<br/>Orchestrators for Claude + OpenCode<br/>Unified instructions for other CLIs"]
+        OW["own/<br/>4 custom skills<br/>3 plugins, 2 hooks"]
+        CF["configs/<br/>Per-CLI config files<br/>Claude, OpenCode, Gemini, Qwen, Codex, Copilot"]
+    end
+
+    UP --> DL --> OW --> CF
+
+    style UP fill:#334155,color:#e2e8f0
+    style DL fill:#475569,color:#e2e8f0
+    style OW fill:#f97316,color:#fff
+    style CF fill:#ea580c,color:#fff
 ```
 
-### `upstream/`
+### Layer Details
 
-Assets copied verbatim from public sources. **Do not edit SKILL.md files here directly** — use EXTENSION.md instead (see below).
+| Layer | Contents | Source |
+|-------|----------|--------|
+| `upstream/` | 37 skills + EXTENSION.md overlays, 8 agent groups | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite), PSF |
+| `delta/` | Claude orchestrators, OpenCode agents + domain agents + commands, unified instructions | Modified upstream |
+| `own/` | skill-creator + 3 Obsidian skills, 3 plugins (merge-checks, mermaid, trim-md), 2 Claude hooks | Original creations |
+| `configs/` | CLAUDE.md, opencode.json, QWEN.md, gemini-settings.json, codex-config.toml, copilot-instructions.md | Per-CLI configurations |
 
-- `upstream/skills/` — 34+ skills from [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) and `_shared/`
-- `upstream/agents/` — 90+ specialist agents from [project-starter-framework](https://github.com/JNZader-Vault/project-starter-framework)
+## Commands
 
-#### EXTENSION.md model
+| Command | Description |
+|---------|-------------|
+| `install` | Install AI development layer for selected CLIs (default) |
+| `doctor` | Show health report of current installation |
+| `update` | Re-install configured CLIs with fresh assets |
+| `uninstall` | Remove javi-ai managed files |
+| `sync` | Compile `.ai-config/` into per-CLI config files |
 
-Some skill folders under `upstream/skills/` contain an `EXTENSION.md` alongside the canonical `SKILL.md`. Extensions are **Javi's additions** that get appended to the upstream skill during installation — they are NOT part of the upstream source.
+```bash
+npx javi-ai install --cli claude,opencode
+npx javi-ai doctor
+npx javi-ai update
+npx javi-ai uninstall
+npx javi-ai sync --target claude --mode merge
+```
+
+### Install Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--dry-run` | boolean | `false` | Preview changes without writing files |
+| `--cli` | string | — | Comma-separated CLIs |
+| `--yes` / `-y` | boolean | `false` | Non-interactive mode |
+
+### Sync Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--target` | string | `all` | CLI target: `claude`, `opencode`, `gemini`, `codex`, `copilot`, `all` |
+| `--mode` | string | `overwrite` | Sync mode: `overwrite` or `merge` |
+| `--project-dir` | string | `.` | Project directory to sync |
+| `--dry-run` | boolean | `false` | Preview without writing |
+
+## Extension Model
+
+Some upstream skills ship with an `EXTENSION.md` alongside the canonical `SKILL.md`. Extensions are additions that get appended during installation — the upstream `SKILL.md` is never modified.
 
 ```
 upstream/skills/sdd-explore/
-├── SKILL.md       ← exact copy from agent-teams-lite (never edit)
-└── EXTENSION.md   ← Javi's additions, appended at install time
+├── SKILL.md       ← exact copy from upstream (never edit)
+└── EXTENSION.md   ← additions, appended at install time
 ```
 
-Each extension block carries a STATUS comment for upstream sync tracking:
+Each extension carries a tracking comment:
 
 ```markdown
-<!-- STATUS: Not yet submitted to agent-teams-lite upstream -->
-<!-- ACTION: If Gentleman incorporates X in upstream, remove this section -->
-<!-- PR: pending -->
+<!-- STATUS: Not yet submitted to upstream -->
+<!-- ACTION: If upstream incorporates X, remove this section -->
 ```
 
-**When upstream adds equivalent functionality**: compare, delete the matching extension block, and update the STATUS comment.
+When upstream adds equivalent functionality, the matching extension block is removed.
 
-### `delta/`
+## Merge Strategies
 
-Modified or extended versions of upstream assets that cannot be expressed as EXTENSION.md additions (e.g., orchestrators, unified instructions).
+`javi-ai` uses different merge strategies depending on file type:
 
-- `delta/orchestrators/claude/` — 6 Claude domain orchestrators
-- `delta/orchestrators/opencode/agents/` — 13 standalone OpenCode agents
-- `delta/orchestrators/opencode/domain-agents/` — 6 OpenCode domain agents
-- `delta/orchestrators/opencode/commands/` — 8 SDD slash commands
-- `delta/unified-instructions/` — Orchestrator instructions for non-subagent CLIs
+| File Type | Strategy | Behavior |
+|-----------|----------|----------|
+| `.json` | Deep merge | Objects merged recursively, arrays deduplicated |
+| `.md` | Marker merge | Content placed between `<!-- BEGIN JAVI-AI -->` / `<!-- END JAVI-AI -->` markers |
+| Other files | Create-if-absent | Only copied if target doesn't exist |
 
-> **Note**: Skill modifications now live in `upstream/skills/<skill>/EXTENSION.md`. The old `delta/skills/` pattern is retired.
+Backups are automatically created in `~/.javi-ai/backups/<timestamp>/` before any merge.
 
-### `own/`
+## Project-Level Sync
 
-Assets created by Javi, not derived from any upstream source.
-
-- `own/skills/` — skill-creator + 3 Obsidian skills
-- `own/plugins/` — merge-checks, mermaid, trim-md
-- `own/hooks/claude/` — comment-check.sh, todo-tracker.sh
-- `own/hooks/psf/` — 11 PSF hook specs
-
-### `configs/`
-
-Tool-specific configuration files, ready to symlink into `~/.config/` or tool home dirs.
-
-- `configs/claude/` — CLAUDE.md, settings.json, MCP template, theme, hooks
-- `configs/opencode/` — opencode.json, gentleman theme
-- `configs/qwen/` — QWEN.md, settings.json
-- `configs/gemini/` — gemini-settings.json
-- `configs/codex/` — codex-config.toml
-- `configs/copilot/` — Copilot instructions + SDD orchestrator
-
-## Install
-
-See individual tool configs for symlink instructions. A unified install script is planned.
-
-During installation, for each skill with an EXTENSION.md, concatenate:
+The `sync` command compiles a project's `.ai-config/` directory into per-CLI config files:
 
 ```bash
-cat upstream/skills/<skill>/SKILL.md upstream/skills/<skill>/EXTENSION.md > ~/.agents/skills/<skill>/SKILL.md
+npx javi-ai sync --project-dir /path/to/project
 ```
 
-For skills without EXTENSION.md, copy SKILL.md directly.
+It walks `.ai-config/agents/` and `.ai-config/skills/`, reads frontmatter from each markdown file, and generates merged config files like `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, etc.
 
-## Syncing with upstream
+A `.skillignore` file in `.ai-config/` can exclude specific skills globally or per-target:
 
-When [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) releases updates:
+```
+# Exclude from all CLIs
+some-skill
 
-1. **Check for skill updates**: compare `upstream/skills/<skill>/SKILL.md` against the upstream source.
-2. **Update SKILL.md**: overwrite with the new upstream content (verbatim — no edits).
-3. **Review EXTENSION.md**: check if any extension block is now redundant because upstream incorporated the feature.
-4. **Remove redundant blocks**: delete the extension block and update the STATUS comment to `STATUS: Incorporated in upstream vX.Y`.
-5. **Re-install**: re-run the concatenation step to rebuild the installed skills.
+# Exclude only from opencode
+opencode:another-skill
+```
 
-## Sources
+## Requirements
 
-| Layer | Source |
-|-------|--------|
-| upstream/skills | agent-teams-lite + _shared |
-| upstream/skills/*/EXTENSION.md | Javi.Dots (extensions appended at install) |
-| upstream/agents | project-starter-framework |
-| delta/* | Javi.Dots (GentlemanClaude, GentlemanOpenCode) |
-| own/* | Javi.Dots (original creations) |
-| configs/* | Javi.Dots (GentlemanClaude, GentlemanOpenCode, GentlemanQwen) |
+- **Node.js** >= 18
+
+## Ecosystem
+
+| Package | Description |
+|---------|-------------|
+| [javi-dots](https://github.com/JNZader/javi-dots) | Workstation setup (orchestrates javi-ai) |
+| **javi-ai** | AI development layer (this package) |
+| [javi-forge](https://github.com/JNZader/javi-forge) | Project scaffolding (calls javi-ai sync) |
+
+## License
+
+[MIT](LICENSE)

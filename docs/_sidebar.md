@@ -1,0 +1,10 @@
+- [Home](/)
+- [Getting Started](getting-started.md)
+- [Commands](commands.md)
+- [Providers](providers.md)
+- [Skills](skills.md)
+- [Extension Model](extension-model.md)
+- [Architecture](architecture.md)
+- **Links**
+- [javi-dots](https://github.com/JNZader/javi-dots)
+- [javi-forge](https://github.com/JNZader/javi-forge)
