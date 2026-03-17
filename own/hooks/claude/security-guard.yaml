@@ -63,6 +63,8 @@ blockedCommands:
     reason: "Would drop table"
   - pattern: "TRUNCATE TABLE"
     reason: "Would truncate table"
+  - pattern: "shutdown|reboot|init 0|init 6"
+    reason: "Would shutdown or reboot the system"
 
 # ── Warned Commands ──────────────────────────────────────────────────────────
 # Commands that trigger a confirmation prompt (exit code 0 + JSON ask)

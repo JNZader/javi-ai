@@ -49,6 +49,7 @@ BLOCKED_PATTERNS=(
   'DROP DATABASE'
   'DROP TABLE'
   'TRUNCATE TABLE'
+  'shutdown|reboot|init 0|init 6'
 )
 
 for pattern in "${BLOCKED_PATTERNS[@]}"; do
