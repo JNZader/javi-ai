@@ -1,0 +1,102 @@
+# Security Guard — patterns.yaml
+# Single source of truth for all security rules.
+# Used by the PreToolUse hook to block/warn on dangerous operations.
+
+# ── Zero Access Paths ────────────────────────────────────────────────────────
+# Absolute block — no read, write, or delete
+zeroAccessPaths:
+  - /etc/shadow
+  - /etc/passwd
+  - /etc/sudoers
+  - ~/.ssh/id_*
+  - ~/.ssh/config
+  - ~/.gnupg/
+  - ~/.aws/credentials
+  - ~/.config/gh/hosts.yml
+
+# ── Read-Only Paths ──────────────────────────────────────────────────────────
+# Can read, but never write or delete
+readOnlyPaths:
+  - /etc/hosts
+  - /etc/resolv.conf
+  - ~/.gitconfig
+  - ~/.bashrc
+  - ~/.zshrc
+  - ~/.config/
+
+# ── No-Delete Paths ──────────────────────────────────────────────────────────
+# Can read and write, but never delete
+noDeletePaths:
+  - .git/
+  - .env
+  - .env.local
+  - .env.production
+  - node_modules/
+  - vendor/
+  - venv/
+  - __pycache__/
+
+# ── Blocked Commands ─────────────────────────────────────────────────────────
+# Commands that are always blocked (exit code 2 = block)
+blockedCommands:
+  - pattern: "rm -rf /"
+    reason: "Would delete entire filesystem"
+  - pattern: "rm -rf ~"
+    reason: "Would delete entire home directory"
+  - pattern: "rm -rf \\*"
+    reason: "Recursive force delete with wildcard"
+  - pattern: ":(){ :|:& };:"
+    reason: "Fork bomb"
+  - pattern: "mkfs\\."
+    reason: "Would format a disk"
+  - pattern: "dd if=.* of=/dev/"
+    reason: "Direct disk write"
+  - pattern: "> /dev/sd"
+    reason: "Direct disk overwrite"
+  - pattern: "chmod -R 777 /"
+    reason: "Insecure permissions on root"
+  - pattern: "DELETE FROM .* WHERE 1"
+    reason: "Delete all rows without condition"
+  - pattern: "DROP DATABASE"
+    reason: "Would drop entire database"
+  - pattern: "DROP TABLE"
+    reason: "Would drop table"
+  - pattern: "TRUNCATE TABLE"
+    reason: "Would truncate table"
+
+# ── Warned Commands ──────────────────────────────────────────────────────────
+# Commands that trigger a confirmation prompt (exit code 0 + JSON ask)
+warnedCommands:
+  - pattern: "git push.*--force"
+    reason: "Force push can overwrite remote history"
+  - pattern: "git push.*-f "
+    reason: "Force push can overwrite remote history"
+  - pattern: "git reset --hard"
+    reason: "Hard reset discards uncommitted changes"
+  - pattern: "git clean -fd"
+    reason: "Removes untracked files permanently"
+  - pattern: "npm publish"
+    reason: "Publishing to npm registry"
+  - pattern: "docker system prune"
+    reason: "Removes all unused Docker resources"
+  - pattern: "curl.*\\| bash"
+    reason: "Piping remote script to bash"
+  - pattern: "wget.*\\| sh"
+    reason: "Piping remote script to shell"
+  - pattern: "sudo "
+    reason: "Elevated privileges requested"
+
+# ── Protected File Patterns ──────────────────────────────────────────────────
+# Files that should never be committed or written by agents
+protectedFiles:
+  - "*.pem"
+  - "*.key"
+  - "*.p12"
+  - "*.pfx"
+  - ".env"
+  - ".env.local"
+  - ".env.production"
+  - "credentials.json"
+  - "service-account.json"
+  - "secrets.yaml"
+  - "*.secret"
