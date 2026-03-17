@@ -37,6 +37,8 @@ Scan AI agent skills for security risks before installation. Detects 20+ categor
 | **Data Exfiltration** | `curl`, `wget`, `fetch()` to unknown URLs, encoded payloads | Sending data to attacker |
 | **Self-Modification** | Modifying `CLAUDE.md`, `AGENTS.md`, `settings.json`, hook scripts | Persistence/privilege escalation |
 | **Scope Escape** | Instructions to ignore previous instructions, override safety rules | Prompt injection |
+| **Hook Tampering** | Disabling, removing, or modifying hook scripts or hook config | Bypassing safety guardrails |
+| **Recursive Agent Spawning** | Spawning agents in loops without termination conditions | Resource exhaustion / infinite loops |
 
 ### High (Warn, Require Confirmation)
 
@@ -47,6 +49,8 @@ Scan AI agent skills for security risks before installation. Detects 20+ categor
 | **Network Access** | Outbound connections, webhook URLs, API endpoints | Unexpected communication |
 | **File System Traversal** | `../../`, absolute paths outside project | Access to unintended files |
 | **Environment Manipulation** | Modifying `PATH`, `HOME`, `LD_PRELOAD` | System subversion |
+| **Process Execution** | `child_process`, `subprocess`, `os.system()`, spawning shells | Arbitrary process creation |
+| **Disk Operations** | Large file writes, `/tmp` abuse, filling disk intentionally | Denial of service |
 
 ### Medium (Log, Continue)
 
@@ -57,6 +61,7 @@ Scan AI agent skills for security risks before installation. Detects 20+ categor
 | **Missing Provenance** | No author, no version, no repository URL | Unknown origin |
 | **Overly Broad Triggers** | Trigger patterns that match everything | Unwanted activation |
 | **Large Asset Files** | Binary files, compiled code in assets/ | Uninspectable content |
+| **Stale Dependencies** | References to deprecated or unmaintained packages | Supply chain risk |
 
 ---
 
