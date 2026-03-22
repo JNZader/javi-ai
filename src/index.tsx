@@ -58,11 +58,10 @@ const cli = meow(`
 
 const subcommand = cli.input[0] ?? 'install'
 
-const nonInteractive = cli.flags.yes || process.env['CI'] === '1'
-
 // When stdin doesn't support raw mode (pipes, subprocesses, CI), provide a fake
 // stdin stream so Ink doesn't crash trying to enable raw mode on a non-TTY pipe.
 const isTTY = process.stdin.isTTY === true
+const nonInteractive = cli.flags.yes || process.env['CI'] === '1' || !isTTY
 const fakeStdin = new PassThrough() as unknown as NodeJS.ReadStream
 Object.defineProperty(fakeStdin, 'isTTY', { value: false })
 const inkStdin = isTTY ? process.stdin : fakeStdin
