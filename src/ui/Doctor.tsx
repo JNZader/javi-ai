@@ -89,12 +89,12 @@ export default function Doctor({ autoExit = false }: DoctorProps) {
           {result.sections.map((section, si) => {
             const sectionHasFail = section.checks.some(c => c.status === 'fail')
             return (
-              <Box key={si} flexDirection="column" marginBottom={1}>
+              <Box key={`section-${si}-${section.title}`} flexDirection="column" marginBottom={1}>
                 <Text bold color={sectionHasFail ? theme.warning : theme.success}>
                   {'  '}{section.title}
                 </Text>
                 {section.checks.map((check, ci) => (
-                  <Box key={ci}>
+                  <Box key={`section-${si}-check-${ci}-${check.label}`}>
                     <Text color={STATUS_COLOR[check.status] as any}>
                       {'  '}
                       {STATUS_ICON[check.status]}
