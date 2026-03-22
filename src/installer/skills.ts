@@ -37,6 +37,9 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
 
     const destDir = path.join(dest, skillDir)
     if (!dryRun) {
+      // Remove symlinks before creating directory (can't overwrite symlink with dir)
+      const destStat = await fs.lstat(destDir).catch(() => null)
+      if (destStat?.isSymbolicLink()) await fs.remove(destDir)
       await fs.ensureDir(destDir)
       let content = await fs.readFile(skillMd, 'utf-8')
       // Append extension if exists
@@ -68,6 +71,9 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
       const skillPath = path.join(ownSkillsSource, skillDir)
       const destDir = path.join(dest, skillDir)
       if (!dryRun) {
+        // Remove symlinks before copying (can't overwrite symlink with dir)
+        const destStat = await fs.lstat(destDir).catch(() => null)
+        if (destStat?.isSymbolicLink()) await fs.remove(destDir)
         await fs.copy(skillPath, destDir, { overwrite: true })
       }
       installed.push(skillDir)
