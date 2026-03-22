@@ -336,7 +336,7 @@ describe('E2E Aggressive: extension model', () => {
       '../../',
     )
     const upstreamContent = await fs.readFile(
-      path.join(repoRoot, 'upstream', 'skills', 'react-19', 'SKILL.md'),
+      path.join(repoRoot, 'upstream', 'gentleman-skills', 'curated', 'react-19', 'SKILL.md'),
       'utf-8',
     )
 
@@ -368,12 +368,13 @@ describe('E2E Aggressive: extension model', () => {
       path.dirname(new URL(import.meta.url).pathname),
       '../../',
     )
-    const upstreamSkill = await fs.readFile(
-      path.join(repoRoot, 'upstream', 'skills', 'sdd-explore', 'SKILL.md'),
-      'utf-8',
-    )
-    // The installed file should start with the upstream content
-    expect(installed.startsWith(upstreamSkill)).toBe(true)
+    // sdd-explore has a delta override, so the base is from delta/overrides/
+    const overridePath = path.join(repoRoot, 'delta', 'overrides', 'sdd-explore', 'SKILL.md')
+    const atlPath = path.join(repoRoot, 'upstream', 'agent-teams-lite', 'skills', 'sdd-explore', 'SKILL.md')
+    const basePath = await fs.pathExists(overridePath) ? overridePath : atlPath
+    const baseSkill = await fs.readFile(basePath, 'utf-8')
+    // The installed file should start with the base content
+    expect(installed.startsWith(baseSkill)).toBe(true)
 
     // Extension section contains "Perspective Mode"
     expect(installed).toContain('Perspective Mode')

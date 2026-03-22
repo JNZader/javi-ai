@@ -71,27 +71,44 @@ import { installSkillsForCLI } from './skills.js'
 async function createAssetTree(): Promise<void> {
   await fs.remove(FIXED_ASSETS_ROOT)
 
-  const upstreamSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills')
+  // ATL upstream skills
+  const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
 
-  await fs.ensureDir(path.join(upstreamSkills, 'react-19'))
-  await fs.writeFile(path.join(upstreamSkills, 'react-19', 'SKILL.md'), '# React 19 Skill', 'utf-8')
+  await fs.ensureDir(path.join(atlSkills, 'sdd-explore'))
+  await fs.writeFile(path.join(atlSkills, 'sdd-explore', 'SKILL.md'), '# SDD Explore', 'utf-8')
 
-  await fs.ensureDir(path.join(upstreamSkills, 'typescript'))
-  await fs.writeFile(path.join(upstreamSkills, 'typescript', 'SKILL.md'), '# TypeScript Skill', 'utf-8')
+  await fs.ensureDir(path.join(atlSkills, 'sdd-apply'))
+  await fs.writeFile(path.join(atlSkills, 'sdd-apply', 'SKILL.md'), '# SDD Apply', 'utf-8')
 
-  await fs.ensureDir(path.join(upstreamSkills, 'sdd-explore'))
-  await fs.writeFile(path.join(upstreamSkills, 'sdd-explore', 'SKILL.md'), '# SDD Explore', 'utf-8')
-  await fs.writeFile(path.join(upstreamSkills, 'sdd-explore', 'EXTENSION.md'), '## Extension: Perspective', 'utf-8')
+  await fs.ensureDir(path.join(atlSkills, '_shared'))
+  await fs.writeFile(path.join(atlSkills, '_shared', 'persistence-contract.md'), '# Shared', 'utf-8')
 
-  await fs.ensureDir(path.join(upstreamSkills, '_shared'))
-  await fs.writeFile(path.join(upstreamSkills, '_shared', 'persistence-contract.md'), '# Shared', 'utf-8')
+  await fs.ensureDir(path.join(atlSkills, '.dotfile'))
+  await fs.writeFile(path.join(atlSkills, '.dotfile', 'SKILL.md'), '# Dotfile', 'utf-8')
 
-  await fs.ensureDir(path.join(upstreamSkills, '.dotfile'))
-  await fs.writeFile(path.join(upstreamSkills, '.dotfile', 'SKILL.md'), '# Dotfile', 'utf-8')
+  await fs.ensureDir(path.join(atlSkills, 'no-skill-dir'))
+  await fs.writeFile(path.join(atlSkills, 'no-skill-dir', 'README.md'), '# No skill', 'utf-8')
 
-  await fs.ensureDir(path.join(upstreamSkills, 'no-skill-dir'))
-  await fs.writeFile(path.join(upstreamSkills, 'no-skill-dir', 'README.md'), '# No skill', 'utf-8')
+  // Gentleman-Skills curated
+  const gsSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'gentleman-skills', 'curated')
 
+  await fs.ensureDir(path.join(gsSkills, 'react-19'))
+  await fs.writeFile(path.join(gsSkills, 'react-19', 'SKILL.md'), '# React 19 Skill', 'utf-8')
+
+  await fs.ensureDir(path.join(gsSkills, 'typescript'))
+  await fs.writeFile(path.join(gsSkills, 'typescript', 'SKILL.md'), '# TypeScript Skill', 'utf-8')
+
+  // Delta extensions (appended to upstream skills)
+  const deltaExt = path.join(FIXED_ASSETS_ROOT, 'delta', 'extensions')
+  await fs.ensureDir(path.join(deltaExt, 'sdd-explore'))
+  await fs.writeFile(path.join(deltaExt, 'sdd-explore', 'EXTENSION.md'), '## Extension: Perspective', 'utf-8')
+
+  // Delta overrides (replaces upstream SKILL.md)
+  const deltaOver = path.join(FIXED_ASSETS_ROOT, 'delta', 'overrides')
+  await fs.ensureDir(path.join(deltaOver, 'sdd-apply'))
+  await fs.writeFile(path.join(deltaOver, 'sdd-apply', 'SKILL.md'), '# SDD Apply Override', 'utf-8')
+
+  // Own skills
   const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
   await fs.ensureDir(path.join(ownSkills, 'skill-creator'))
   await fs.writeFile(path.join(ownSkills, 'skill-creator', 'SKILL.md'), '# Skill Creator', 'utf-8')
@@ -118,9 +135,13 @@ describe('installSkillsForCLI', () => {
   it('dryRun: returns correct skill names without creating files', async () => {
     const result = await installSkillsForCLI('claude', true)
 
+    // ATL skills
+    expect(result).toContain('sdd-explore')
+    expect(result).toContain('sdd-apply')
+    // Gentleman-Skills curated
     expect(result).toContain('react-19')
     expect(result).toContain('typescript')
-    expect(result).toContain('sdd-explore')
+    // Shared + own
     expect(result).toContain('_shared')
     expect(result).toContain('skill-creator')
     expect(result).toContain('obsidian-braindump')
@@ -144,10 +165,16 @@ describe('installSkillsForCLI', () => {
     expect(content).toBe('# React 19 Skill')
   })
 
-  it('installs upstream skill WITH EXTENSION.md: content = SKILL.md + separator + EXTENSION.md', async () => {
+  it('installs upstream skill WITH delta extension: content = SKILL.md + separator + EXTENSION.md', async () => {
     await installSkillsForCLI('claude', false)
     const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'SKILL.md'), 'utf-8')
     expect(content).toBe('# SDD Explore\n\n---\n\n## Extension: Perspective')
+  })
+
+  it('installs upstream skill WITH delta override: uses override SKILL.md', async () => {
+    await installSkillsForCLI('claude', false)
+    const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, 'sdd-apply', 'SKILL.md'), 'utf-8')
+    expect(content).toBe('# SDD Apply Override')
   })
 
   it('skips dotfile directories', async () => {
@@ -155,7 +182,7 @@ describe('installSkillsForCLI', () => {
     expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '.dotfile'))).toBe(false)
   })
 
-  it('skips _shared in main skill loop (but copies it via dedicated path)', async () => {
+  it('copies _shared from ATL upstream', async () => {
     await installSkillsForCLI('claude', false)
     expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '_shared'))).toBe(true)
     expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '_shared', 'persistence-contract.md'))).toBe(true)
@@ -180,8 +207,11 @@ describe('installSkillsForCLI', () => {
     await expect(installSkillsForCLI('claude', false)).resolves.toBeDefined()
   })
 
-  it('handles missing upstream/skills directory: readdir throws (documents actual behavior)', async () => {
-    await fs.remove(path.join(FIXED_ASSETS_ROOT, 'upstream', 'skills'))
-    await expect(installSkillsForCLI('claude', false)).rejects.toThrow()
+  it('handles missing upstream directories gracefully (installs own only)', async () => {
+    await fs.remove(path.join(FIXED_ASSETS_ROOT, 'upstream'))
+    const result = await installSkillsForCLI('claude', false)
+    // Should still install own skills even without upstream
+    expect(result).toContain('skill-creator')
+    expect(result).toContain('obsidian-braindump')
   })
 })
