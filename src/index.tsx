@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import React from 'react'
 import { render } from 'ink'
+import { PassThrough } from 'node:stream'
 import meow from 'meow'
 import App from './ui/App.js'
 import Doctor from './ui/Doctor.js'
@@ -59,19 +60,26 @@ const subcommand = cli.input[0] ?? 'install'
 
 const nonInteractive = cli.flags.yes || process.env['CI'] === '1'
 
+// When stdin doesn't support raw mode (pipes, subprocesses, CI), provide a fake
+// stdin stream so Ink doesn't crash trying to enable raw mode on a non-TTY pipe.
+const isTTY = process.stdin.isTTY === true
+const fakeStdin = new PassThrough() as unknown as NodeJS.ReadStream
+Object.defineProperty(fakeStdin, 'isTTY', { value: false })
+const inkStdin = isTTY ? process.stdin : fakeStdin
+
 switch (subcommand) {
   case 'doctor': {
-    render(<Doctor autoExit={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
+    render(<Doctor autoExit={nonInteractive} />, { stdin: inkStdin, exitOnCtrlC: !nonInteractive })
     break
   }
 
   case 'update': {
-    render(<Update dryRun={cli.flags.dryRun} autoConfirm={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
+    render(<Update dryRun={cli.flags.dryRun} autoConfirm={nonInteractive} />, { stdin: inkStdin, exitOnCtrlC: !nonInteractive })
     break
   }
 
   case 'uninstall': {
-    render(<Uninstall autoConfirm={nonInteractive} />, { exitOnCtrlC: !nonInteractive })
+    render(<Uninstall autoConfirm={nonInteractive} />, { stdin: inkStdin, exitOnCtrlC: !nonInteractive })
     break
   }
 
@@ -86,7 +94,7 @@ switch (subcommand) {
         }}
         autoExit={nonInteractive}
       />,
-      { exitOnCtrlC: !nonInteractive }
+      { stdin: inkStdin, exitOnCtrlC: !nonInteractive }
     )
     break
   }
@@ -99,7 +107,7 @@ switch (subcommand) {
 
     render(
       <App dryRun={cli.flags.dryRun} preselectedClis={preselectedClis} autoConfirm={nonInteractive} />,
-      { exitOnCtrlC: !nonInteractive }
+      { stdin: inkStdin, exitOnCtrlC: !nonInteractive }
     )
     break
   }
