@@ -7,53 +7,92 @@ import { CLI_OPTIONS } from '../constants.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ASSETS_ROOT = path.resolve(__dirname, '../../')
 
-// Priority order: psf (lowest) → upstream → own → delta-extensions (highest)
-// Skills in upstream/ with EXTENSION.md get the extension appended
+// Layer priority (lowest → highest):
+//   upstream/agent-teams-lite → upstream/gentleman-skills → delta/overrides → delta/extensions → own
+//
+// For each upstream skill:
+//   1. Read SKILL.md from upstream source
+//   2. If delta/overrides/{skill}/SKILL.md exists → use that instead
+//   3. If delta/extensions/{skill}/EXTENSION.md exists → append to final content
+// Own skills always win (copy entire directory, overwriting upstream).
+
 async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]> {
   const cliOption = CLI_OPTIONS.find(c => c.id === cli)
   if (!cliOption) return []
 
   const installed: string[] = []
-  const skillsSource = path.join(ASSETS_ROOT, 'upstream', 'skills')
-  const ownSkillsSource = path.join(ASSETS_ROOT, 'own', 'skills')
   const dest = cliOption.skillsPath
+
+  // Source directories
+  const atlSkills = path.join(ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
+  const gsSkills = path.join(ASSETS_ROOT, 'upstream', 'gentleman-skills', 'curated')
+  const deltaOverrides = path.join(ASSETS_ROOT, 'delta', 'overrides')
+  const deltaExtensions = path.join(ASSETS_ROOT, 'delta', 'extensions')
+  const ownSkills = path.join(ASSETS_ROOT, 'own', 'skills')
 
   if (!dryRun) {
     await fs.ensureDir(dest)
   }
 
-  // Install upstream skills (+ append EXTENSION.md if exists)
-  const skillDirs = await fs.readdir(skillsSource)
-  for (const skillDir of skillDirs) {
-    if (skillDir.startsWith('.') || skillDir === '_shared') continue
-    const skillPath = path.join(skillsSource, skillDir)
-    const stat = await fs.stat(skillPath)
-    if (!stat.isDirectory()) continue
-
+  // ── Helper: install a single upstream skill with delta layers ──────────
+  async function installUpstreamSkill(skillDir: string, skillPath: string): Promise<void> {
     const skillMd = path.join(skillPath, 'SKILL.md')
-    const extensionMd = path.join(skillPath, 'EXTENSION.md')
+    if (!await fs.pathExists(skillMd)) return
 
-    if (!await fs.pathExists(skillMd)) continue
+    // Check for delta override (replaces entire SKILL.md)
+    const overrideMd = path.join(deltaOverrides, skillDir, 'SKILL.md')
+    const hasOverride = await fs.pathExists(overrideMd)
+
+    // Check for delta extension (appended to SKILL.md)
+    const extensionMd = path.join(deltaExtensions, skillDir, 'EXTENSION.md')
+    const hasExtension = await fs.pathExists(extensionMd)
 
     const destDir = path.join(dest, skillDir)
     if (!dryRun) {
-      // Remove symlinks before creating directory (can't overwrite symlink with dir)
       const destStat = await fs.lstat(destDir).catch(() => null)
       if (destStat?.isSymbolicLink()) await fs.remove(destDir)
       await fs.ensureDir(destDir)
-      let content = await fs.readFile(skillMd, 'utf-8')
+
+      // Read base content (override wins over original)
+      let content = await fs.readFile(hasOverride ? overrideMd : skillMd, 'utf-8')
+
       // Append extension if exists
-      if (await fs.pathExists(extensionMd)) {
+      if (hasExtension) {
         const ext = await fs.readFile(extensionMd, 'utf-8')
         content = `${content}\n\n---\n\n${ext}`
       }
+
       await fs.writeFile(path.join(destDir, 'SKILL.md'), content, 'utf-8')
     }
     installed.push(skillDir)
   }
 
-  // Install _shared conventions
-  const sharedSrc = path.join(skillsSource, '_shared')
+  // ── Layer 1: agent-teams-lite skills ───────────────────────────────────
+  if (await fs.pathExists(atlSkills)) {
+    const dirs = await fs.readdir(atlSkills)
+    for (const skillDir of dirs) {
+      if (skillDir.startsWith('.') || skillDir === '_shared') continue
+      const skillPath = path.join(atlSkills, skillDir)
+      const stat = await fs.stat(skillPath)
+      if (!stat.isDirectory()) continue
+      await installUpstreamSkill(skillDir, skillPath)
+    }
+  }
+
+  // ── Layer 2: gentleman-skills curated ──────────────────────────────────
+  if (await fs.pathExists(gsSkills)) {
+    const dirs = await fs.readdir(gsSkills)
+    for (const skillDir of dirs) {
+      if (skillDir.startsWith('.')) continue
+      const skillPath = path.join(gsSkills, skillDir)
+      const stat = await fs.stat(skillPath)
+      if (!stat.isDirectory()) continue
+      await installUpstreamSkill(skillDir, skillPath)
+    }
+  }
+
+  // ── Layer 3: _shared conventions (from ATL) ────────────────────────────
+  const sharedSrc = path.join(atlSkills, '_shared')
   if (await fs.pathExists(sharedSrc)) {
     const sharedDest = path.join(dest, '_shared')
     if (!dryRun) {
@@ -63,15 +102,14 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
     installed.push('_shared')
   }
 
-  // Install own skills
-  if (await fs.pathExists(ownSkillsSource)) {
-    const ownDirs = await fs.readdir(ownSkillsSource)
-    for (const skillDir of ownDirs) {
+  // ── Layer 4: own skills (highest priority, full directory copy) ────────
+  if (await fs.pathExists(ownSkills)) {
+    const dirs = await fs.readdir(ownSkills)
+    for (const skillDir of dirs) {
       if (skillDir.startsWith('.')) continue
-      const skillPath = path.join(ownSkillsSource, skillDir)
+      const skillPath = path.join(ownSkills, skillDir)
       const destDir = path.join(dest, skillDir)
       if (!dryRun) {
-        // Remove symlinks before copying (can't overwrite symlink with dir)
         const destStat = await fs.lstat(destDir).catch(() => null)
         if (destStat?.isSymbolicLink()) await fs.remove(destDir)
         await fs.copy(skillPath, destDir, { overwrite: true })
