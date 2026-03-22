@@ -1,12 +1,12 @@
 ---
 name: jira-epic
 description: >
-  Creates Jira epics for large features following a structured format.
+  Creates Jira epics for large features following Prowler's standard format.
   Trigger: When user asks to create an epic, large feature, or multi-task initiative.
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.1"
+  version: "1.0"
 ---
 
 ## When to Use
@@ -226,37 +226,31 @@ Would you like me to generate the full task descriptions?
 
 ## Jira MCP Integration
 
-**CRITICAL:** When creating epics via MCP, use these exact parameters.
-
-> **Project Configuration:** The examples below use placeholder values. Ask the user for their
-> project key, team field ID, and description field ID on first use, then reuse for the session.
-> Default examples use Prowler's Jira setup as reference.
+**CRITICAL:** When creating epics via MCP, use these exact parameters:
 
 ### Required Fields
 
 ```json
 {
-  "project_key": "{PROJECT_KEY}",
+  "project_key": "PROWLER",
   "summary": "[EPIC] Feature name",
   "issue_type": "Epic",
   "additional_fields": {
-    "{team_field_id}": {"value": "{team_name}"}
+    "customfield_10359": {"value": "UI"}
   }
 }
 ```
 
 ### Team Field (REQUIRED)
 
-The team field (e.g., `customfield_10359` in Prowler) is typically **REQUIRED**. Common options:
-- Frontend/UI team
-- Backend/API team
-- SDK/Platform team
-
-> Ask the user: "What is your Jira team custom field ID and team names?"
+The `customfield_10359` (Team) field is **REQUIRED**. Options:
+- `"UI"` - Frontend epics
+- `"API"` - Backend epics
+- `"SDK"` - Prowler SDK epics
 
 ### Work Item Description Field
 
-**IMPORTANT:** Some Jira projects use a custom field (e.g., `customfield_10363`) instead of the standard `description` field for display in the UI. Ask the user which field their project uses.
+**IMPORTANT:** The project uses `customfield_10363` (Work Item Description) instead of the standard `description` field for display in the UI.
 
 **CRITICAL:** Use **Jira Wiki markup**, NOT Markdown:
 - `h2.` instead of `##`
@@ -264,11 +258,11 @@ The team field (e.g., `customfield_10359` in Prowler) is typically **REQUIRED**.
 - `* item` for bullets (same)
 - `** subitem` for nested bullets
 
-After creating the epic, update the description with (using Jira Wiki markup):
+After creating the epic, update the description with:
 
 ```json
 {
-  "{description_field}": "h2. Feature Overview\n\n{overview}\n\nh2. Requirements\n\n*{Section 1}*\n* {requirement 1}\n* {requirement 2}\n\n*{Section 2}*\n* {requirement 1}\n* {requirement 2}\n\nh2. Technical Considerations\n\n*Performance:*\n* {consideration 1}\n\n*Data Integration:*\n* {consideration 2}\n\nh2. Implementation Checklist\n\n* [ ] {deliverable 1}\n* [ ] {deliverable 2}\n* [ ] {deliverable 3}"
+  "customfield_10363": "h2. Feature Overview\n\n{overview}\n\nh2. Requirements\n\n*{Section 1}*\n* {requirement 1}\n* {requirement 2}\n\n*{Section 2}*\n* {requirement 1}\n* {requirement 2}\n\nh2. Technical Considerations\n\n*Performance:*\n* {consideration 1}\n\n*Data Integration:*\n* {consideration 2}\n\nh2. Implementation Checklist\n\n* [ ] {deliverable 1}\n* [ ] {deliverable 2}\n* [ ] {deliverable 3}"
 }
 ```
 
@@ -279,7 +273,7 @@ When creating child tasks, use the epic key as parent:
 ```json
 {
   "additional_fields": {
-    "parent": "{EPIC_KEY}"
+    "parent": "PROWLER-XXX"
   }
 }
 ```
@@ -315,4 +309,4 @@ mcp__mcp-atlassian__jira_transition_issue (status)
 ```
 
 ## Keywords
-jira, epic, feature, initiative, large feature
+jira, epic, feature, initiative, prowler, large feature

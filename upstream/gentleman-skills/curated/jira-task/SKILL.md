@@ -1,12 +1,12 @@
 ---
 name: jira-task
 description: >
-  Creates Jira tasks following a structured format with configurable project settings.
+  Creates Jira tasks following Prowler's standard format.
   Trigger: When user asks to create a Jira task, ticket, or issue.
 license: Apache-2.0
 metadata:
   author: gentleman-programming
-  version: "1.1"
+  version: "1.0"
 ---
 
 ## When to Use
@@ -309,37 +309,32 @@ Include:
 
 ## Jira MCP Integration
 
-**CRITICAL:** When creating tasks via MCP, use these exact parameters.
-
-> **Project Configuration:** The examples below use placeholder values. Ask the user for their
-> project key, team field ID, and description field ID on first use, then reuse for the session.
+**CRITICAL:** When creating tasks via MCP, use these exact parameters:
 
 ### Required Fields
 
 ```json
 {
-  "project_key": "{PROJECT_KEY}",
+  "project_key": "PROWLER",
   "summary": "[TYPE] Task title (component)",
   "issue_type": "Task",
   "additional_fields": {
-    "parent": "{PARENT_EPIC_KEY}",
-    "{team_field_id}": {"value": "{team_name}"}
+    "parent": "PROWLER-XXX",
+    "customfield_10359": {"value": "UI"}
   }
 }
 ```
 
 ### Team Field (REQUIRED)
 
-The team field (e.g., `customfield_10359`) is typically **REQUIRED**. Common team values:
-- Frontend/UI team
-- Backend/API team
-- SDK/Platform team
-
-> Ask the user: "What is your Jira team custom field ID and team names?"
+The `customfield_10359` (Team) field is **REQUIRED**. Options:
+- `"UI"` - Frontend tasks
+- `"API"` - Backend tasks
+- `"SDK"` - Prowler SDK tasks
 
 ### Work Item Description Field
 
-**IMPORTANT:** Some Jira projects use a custom field (e.g., `customfield_10363`) instead of the standard `description` field. Ask the user which field their project uses.
+**IMPORTANT:** The project uses `customfield_10363` (Work Item Description) instead of the standard `description` field for display in the UI.
 
 **CRITICAL:** Use **Jira Wiki markup**, NOT Markdown:
 - `h2.` instead of `##`
@@ -347,24 +342,22 @@ The team field (e.g., `customfield_10359`) is typically **REQUIRED**. Common tea
 - `* item` for bullets (same)
 - `** subitem` for nested bullets
 
-After creating the issue, update the description with (using Jira Wiki markup):
+After creating the issue, update the description with:
 
 ```json
 {
-  "{description_field}": "h2. Description\n\n{content}\n\n*Current State:*\n* {problem 1}\n* {problem 2}\n\n*Expected State:*\n* {solution 1}\n* {solution 2}\n\nh2. Acceptance Criteria\n\n* {criteria 1}\n* {criteria 2}\n\nh2. Technical Notes\n\nPR: [{pr_url}]\n\nAffected files:\n* {file 1}\n* {file 2}\n\nh2. Testing\n\n* [ ] PR - Local environment\n** {test case 1}\n** {test case 2}\n* [ ] After merge - Staging\n** {test case 3}"
+  "customfield_10363": "h2. Description\n\n{content}\n\n*Current State:*\n* {problem 1}\n* {problem 2}\n\n*Expected State:*\n* {solution 1}\n* {solution 2}\n\nh2. Acceptance Criteria\n\n* {criteria 1}\n* {criteria 2}\n\nh2. Technical Notes\n\nPR: [{pr_url}]\n\nAffected files:\n* {file 1}\n* {file 2}\n\nh2. Testing\n\n* [ ] PR - Local environment\n** {test case 1}\n** {test case 2}\n* [ ] After merge in prowler - dev\n** {test case 3}"
 }
 ```
 
 ### Common Epics
 
-> List your project's common parent epics here for quick reference:
-
 | Epic | Key | Use For |
 |------|-----|---------|
-| UI - Bugs & Improvements | {PROJECT}-XXX | UI bugs, enhancements |
-| API - Bugs / Improvements | {PROJECT}-XXX | API bugs, enhancements |
-| Feature Development | {PROJECT}-XXX | New features |
-| Technical Debt | {PROJECT}-XXX | Refactoring |
+| UI - Bugs & Improvements | PROWLER-193 | UI bugs, enhancements |
+| API - Bugs / Improvements | PROWLER-XXX | API bugs, enhancements |
+| LightHouse AI | PROWLER-594 | AI features |
+| Technical Debt - UI | PROWLER-502 | Refactoring |
 
 ### Workflow Transitions
 
@@ -392,4 +385,4 @@ mcp__mcp-atlassian__jira_transition_issue (status)
 ```
 
 ## Keywords
-jira, task, ticket, issue, bug, feature
+jira, task, ticket, issue, bug, feature, prowler
