@@ -10,11 +10,12 @@ interface Props {
   dryRun: boolean
   selectedClis?: CLI[]
   elapsedMs?: number
+  autoExit?: boolean
   /** @deprecated use useApp exit internally */
   onExit?: () => void
 }
 
-export default function Summary({ steps, dryRun, selectedClis, elapsedMs, onExit }: Props) {
+export default function Summary({ steps, dryRun, selectedClis, elapsedMs, onExit, autoExit }: Props) {
   const { exit } = useApp()
 
   const done   = steps.filter(s => s.status === 'done').length
@@ -34,7 +35,7 @@ export default function Summary({ steps, dryRun, selectedClis, elapsedMs, onExit
 
   useInput((_, key) => {
     if (key.return || key.escape) handleExit()
-  })
+  }, { isActive: !autoExit })
 
   // Group steps by CLI (step IDs like "claude-skills")
   const cliList = selectedClis ?? []

@@ -136,6 +136,7 @@ export default function Update({ dryRun = false, autoConfirm = false }: UpdatePr
           dryRun={dryRun}
           selectedClis={installedClis}
           elapsedMs={Date.now() - startTime}
+          autoExit={autoConfirm}
           onExit={() => exit()}
         />
       )}

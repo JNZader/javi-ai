@@ -95,6 +95,7 @@ export default function App({ dryRun = false, preselectedClis, autoConfirm = fal
           dryRun={dryRun}
           selectedClis={selectedClis}
           elapsedMs={Date.now() - startTime}
+          autoExit={autoConfirm}
         />
       )}
     </Box>
