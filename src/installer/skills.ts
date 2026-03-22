@@ -37,32 +37,31 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
   // ── Helper: install a single upstream skill with delta layers ──────────
   async function installUpstreamSkill(skillDir: string, skillPath: string): Promise<void> {
     const skillMd = path.join(skillPath, 'SKILL.md')
-    if (!await fs.pathExists(skillMd)) return
-
-    // Check for delta override (replaces entire SKILL.md)
-    const overrideMd = path.join(deltaOverrides, skillDir, 'SKILL.md')
-    const hasOverride = await fs.pathExists(overrideMd)
-
-    // Check for delta extension (appended to SKILL.md)
-    const extensionMd = path.join(deltaExtensions, skillDir, 'EXTENSION.md')
-    const hasExtension = await fs.pathExists(extensionMd)
+    const hasSkillMd = await fs.pathExists(skillMd)
 
     const destDir = path.join(dest, skillDir)
     if (!dryRun) {
       const destStat = await fs.lstat(destDir).catch(() => null)
       if (destStat?.isSymbolicLink()) await fs.remove(destDir)
-      await fs.ensureDir(destDir)
 
-      // Read base content (override wins over original)
-      let content = await fs.readFile(hasOverride ? overrideMd : skillMd, 'utf-8')
+      if (hasSkillMd) {
+        // Single SKILL.md skill — apply delta layers
+        const overrideMd = path.join(deltaOverrides, skillDir, 'SKILL.md')
+        const hasOverride = await fs.pathExists(overrideMd)
+        const extensionMd = path.join(deltaExtensions, skillDir, 'EXTENSION.md')
+        const hasExtension = await fs.pathExists(extensionMd)
 
-      // Append extension if exists
-      if (hasExtension) {
-        const ext = await fs.readFile(extensionMd, 'utf-8')
-        content = `${content}\n\n---\n\n${ext}`
+        await fs.ensureDir(destDir)
+        let content = await fs.readFile(hasOverride ? overrideMd : skillMd, 'utf-8')
+        if (hasExtension) {
+          const ext = await fs.readFile(extensionMd, 'utf-8')
+          content = `${content}\n\n---\n\n${ext}`
+        }
+        await fs.writeFile(path.join(destDir, 'SKILL.md'), content, 'utf-8')
+      } else {
+        // Multi-file skill (e.g. angular/) — copy entire directory
+        await fs.copy(skillPath, destDir, { overwrite: true })
       }
-
-      await fs.writeFile(path.join(destDir, 'SKILL.md'), content, 'utf-8')
     }
     installed.push(skillDir)
   }

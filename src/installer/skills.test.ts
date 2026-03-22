@@ -154,9 +154,10 @@ describe('installSkillsForCLI', () => {
     expect(result).not.toContain('.dotfile')
   })
 
-  it('dryRun: does not include no-skill-dir (no SKILL.md)', async () => {
+  it('dryRun: includes multi-file skills without SKILL.md (e.g. angular)', async () => {
     const result = await installSkillsForCLI('claude', true)
-    expect(result).not.toContain('no-skill-dir')
+    // no-skill-dir is now included as a multi-file skill (full directory copy)
+    expect(result).toContain('no-skill-dir')
   })
 
   it('installs upstream skill without EXTENSION.md (content exact match)', async () => {
