@@ -7,17 +7,20 @@
 ```mermaid
 flowchart TB
     subgraph "Layer 1: upstream/"
-        US_SK["skills/<br/>37 skills from agent-teams-lite"]
+        US_ATL["agent-teams-lite/skills/<br/>12 skills from ATL repo"]
+        US_GS["gentleman-skills/curated/<br/>15 skills from Gentleman-Skills repo"]
         US_AG["agents/<br/>8 agent groups from PSF"]
     end
 
     subgraph "Layer 2: delta/"
+        DL_OV["overrides/<br/>10 modified SKILL.md for ATL skills"]
+        DL_EX["extensions/<br/>2 EXTENSION.md appends"]
         DL_OR["orchestrators/<br/>Claude + OpenCode domain agents"]
         DL_UI["unified-instructions/<br/>Instructions for other CLIs"]
     end
 
     subgraph "Layer 3: own/"
-        OW_SK["skills/<br/>4 custom skills"]
+        OW_SK["skills/<br/>29 custom skills"]
         OW_PL["plugins/<br/>3 plugins"]
         OW_HK["hooks/<br/>2 Claude hooks"]
     end
@@ -26,16 +29,22 @@ flowchart TB
         CF["claude/ opencode/ gemini/<br/>qwen/ codex/ copilot/"]
     end
 
-    US_SK --> DL_OR
+    US_ATL --> DL_OV
+    US_GS --> DL_OV
     US_AG --> DL_OR
+    DL_OV --> OW_SK
+    DL_EX --> OW_SK
     DL_OR --> OW_SK
     DL_UI --> OW_SK
     OW_SK --> CF
     OW_PL --> CF
     OW_HK --> CF
 
-    style US_SK fill:#334155,color:#e2e8f0
+    style US_ATL fill:#334155,color:#e2e8f0
+    style US_GS fill:#334155,color:#e2e8f0
     style US_AG fill:#334155,color:#e2e8f0
+    style DL_OV fill:#475569,color:#e2e8f0
+    style DL_EX fill:#475569,color:#e2e8f0
     style DL_OR fill:#475569,color:#e2e8f0
     style DL_UI fill:#475569,color:#e2e8f0
     style OW_SK fill:#f97316,color:#fff
@@ -58,9 +67,11 @@ sequenceDiagram
     User->>CLI: javi-ai install --cli claude
 
     rect rgb(249, 115, 22, 0.1)
-        Note over CLI,FS: Skills Installation
-        CLI->>FS: Read upstream/skills/*
-        CLI->>FS: Append EXTENSION.md if present
+        Note over CLI,FS: Skills Installation (3-layer, ADR-003)
+        CLI->>FS: Read upstream/agent-teams-lite/skills/*
+        CLI->>FS: Read upstream/gentleman-skills/curated/*
+        CLI->>FS: Apply delta/overrides/ (replace SKILL.md)
+        CLI->>FS: Append delta/extensions/ EXTENSION.md
         CLI->>FS: Read own/skills/*
         CLI->>FS: Write to ~/.claude/skills/
     end

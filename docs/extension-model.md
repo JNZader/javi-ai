@@ -4,24 +4,30 @@ The Extension Model is how `javi-ai` customizes upstream skills without modifyin
 
 ## How It Works
 
-Some skill folders under `upstream/skills/` contain an `EXTENSION.md` alongside the canonical `SKILL.md`:
+Since ADR-003, skills are organized in a 3-layer model. The extension model now uses two mechanisms under `delta/`:
+
+- **`delta/overrides/`** — Contains modified `SKILL.md` files that replace the upstream version entirely (10 overrides for ATL skills).
+- **`delta/extensions/`** — Contains `EXTENSION.md` files that are appended to the upstream `SKILL.md` at install time (2 extensions: sdd-apply, sdd-explore).
 
 ```
-upstream/skills/sdd-explore/
-├── SKILL.md       ← exact copy from upstream (never edit)
+delta/extensions/sdd-explore/
 └── EXTENSION.md   ← additions, appended at install time
+
+delta/overrides/sdd-apply/
+└── SKILL.md       ← replaces upstream SKILL.md entirely
 ```
 
-During installation, `javi-ai` concatenates both files:
+During installation, `javi-ai` resolves the final SKILL.md per skill using layer priority:
 
 ```mermaid
 flowchart LR
-    A["SKILL.md<br/>(upstream)"] --> C["Installed SKILL.md<br/>(merged)"]
-    B["EXTENSION.md<br/>(additions)"] --> C
+    A["SKILL.md<br/>(upstream ATL or GS)"] --> C["Installed SKILL.md<br/>(merged)"]
+    O["delta/overrides/ SKILL.md<br/>(if present, replaces upstream)"] --> C
+    B["delta/extensions/ EXTENSION.md<br/>(if present, appended)"] --> C
     C --> D["~/.claude/skills/sdd-explore/SKILL.md"]
 ```
 
-For skills **without** an `EXTENSION.md`, the `SKILL.md` is copied directly.
+Priority: ATL < GS < delta/overrides < own. For skills without an override or extension, the upstream `SKILL.md` is copied directly.
 
 ## Extension Format
 
@@ -65,11 +71,11 @@ sequenceDiagram
 
 ### Step by step
 
-1. **Compare** `upstream/skills/<skill>/SKILL.md` against the upstream source
-2. **Overwrite** `SKILL.md` with the new upstream content (verbatim)
-3. **Review** `EXTENSION.md` — check if any block is now redundant
+1. **Compare** `upstream/agent-teams-lite/skills/<skill>/SKILL.md` (or `upstream/gentleman-skills/curated/`) against the upstream source
+2. **Overwrite** the upstream `SKILL.md` with the new content (verbatim)
+3. **Review** `delta/overrides/` and `delta/extensions/` — check if any override or extension block is now redundant
 4. **Remove** redundant blocks and update the STATUS comment
-5. **Re-install** to rebuild the concatenated skill
+5. **Re-install** to rebuild the merged skill
 
 ## Why Not Edit SKILL.md Directly?
 

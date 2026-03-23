@@ -1,10 +1,15 @@
 # Skills
 
-`javi-ai` ships with a rich library of skills organized in two sources: **upstream** (community-maintained) and **own** (custom creations).
+`javi-ai` ships 57 skills organized in a 3-layer model (per ADR-003): **upstream** (two repos, unmodified), **delta** (overrides and extensions), and **own** (custom creations).
 
 ## Upstream Skills
 
-37 skills sourced from [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) and shared conventions. These cover a wide range of development domains:
+27 skills from two upstream repos (kept unmodified):
+
+- **`upstream/agent-teams-lite/skills/`** — 12 skills from [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite)
+- **`upstream/gentleman-skills/curated/`** — 15 skills from [Gentleman-Skills](https://github.com/Gentleman-Programming/gentleman-skills)
+
+These cover a wide range of development domains:
 
 ### Skill Categories
 
@@ -20,15 +25,18 @@
 | **Workflow** | git-workflow, wave-workflow, obsidian-brain-workflow, ide-plugins |
 | **Docs** | technical-docs, api-documentation, mustache-templates |
 
-### EXTENSION.md Overlays
+### Delta Layer
 
-Some upstream skills carry an `EXTENSION.md` alongside the canonical `SKILL.md`. During installation, the extension content is appended to the skill — the upstream file is never modified.
+The `delta/` directory customizes upstream skills without modifying the originals:
+
+- **`delta/overrides/`** — 10 modified `SKILL.md` files that replace ATL upstream versions entirely
+- **`delta/extensions/`** — 2 `EXTENSION.md` appends (sdd-apply, sdd-explore)
 
 See [Extension Model](extension-model.md) for details.
 
 ## Own Skills
 
-4 custom skills created from scratch:
+29 custom skills created from scratch:
 
 | Skill | Description |
 |-------|-------------|
@@ -47,13 +55,20 @@ Skills are installed in this order (later overwrites earlier if same name):
 
 ```mermaid
 flowchart LR
-    UP["upstream/ skills"] --> OWN["own/ skills"]
+    ATL["upstream/<br/>agent-teams-lite"] --> GS["upstream/<br/>gentleman-skills"]
+    GS --> DL["delta/<br/>overrides + extensions"]
+    DL --> OWN["own/ skills"]
     OWN --> DEST["~/.claude/skills/<br/>(or other CLI)"]
 
-    style UP fill:#334155,color:#e2e8f0
+    style ATL fill:#334155,color:#e2e8f0
+    style GS fill:#334155,color:#e2e8f0
+    style DL fill:#475569,color:#e2e8f0
     style OWN fill:#f97316,color:#fff
     style DEST fill:#166534,color:#fff
 ```
 
-1. **upstream/** — Base skills from community sources
-2. **own/** — Custom skills override upstream if names collide
+1. **upstream/agent-teams-lite/** — 12 ATL skills (lowest priority)
+2. **upstream/gentleman-skills/** — 15 GS skills
+3. **delta/overrides/** — 10 modified SKILL.md replacements for ATL skills
+4. **delta/extensions/** — 2 EXTENSION.md appends
+5. **own/** — 29 custom skills (highest priority, override upstream if names collide)

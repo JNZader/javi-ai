@@ -34,9 +34,9 @@ npx javi-dots
 flowchart TB
     subgraph "Asset Layers (lowest → highest priority)"
         direction TB
-        UP["upstream/<br/>37 skills from agent-teams-lite<br/>8 agent groups from PSF"]
-        DL["delta/<br/>Orchestrators for Claude + OpenCode<br/>Unified instructions for other CLIs"]
-        OW["own/<br/>4 custom skills<br/>3 plugins, 2 hooks"]
+        UP["upstream/<br/>12 ATL skills + 15 GS skills (unmodified)<br/>8 agent groups from PSF"]
+        DL["delta/<br/>10 overrides + 2 extensions<br/>Orchestrators + unified instructions"]
+        OW["own/<br/>29 custom skills<br/>3 plugins, 2 hooks"]
         CF["configs/<br/>Per-CLI config files<br/>Claude, OpenCode, Gemini, Qwen, Codex, Copilot"]
     end
 
@@ -52,9 +52,9 @@ flowchart TB
 
 | Layer | Contents | Source |
 |-------|----------|--------|
-| `upstream/` | 37 skills + EXTENSION.md overlays, 8 agent groups | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite), PSF |
-| `delta/` | Claude orchestrators, OpenCode agents + domain agents + commands, unified instructions | Modified upstream |
-| `own/` | skill-creator + 3 Obsidian skills, 3 plugins (merge-checks, mermaid, trim-md), 2 Claude hooks | Original creations |
+| `upstream/` | 12 ATL skills + 15 GS skills (unmodified), 8 agent groups | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite), [Gentleman-Skills](https://github.com/Gentleman-Programming/gentleman-skills), PSF |
+| `delta/` | 10 overrides + 2 extensions, Claude orchestrators, OpenCode agents + domain agents + commands, unified instructions | Modified upstream (ADR-003) |
+| `own/` | 29 custom skills, 3 plugins (merge-checks, mermaid, trim-md), 2 Claude hooks | Original creations |
 | `configs/` | CLAUDE.md, opencode.json, QWEN.md, gemini-settings.json, codex-config.toml, copilot-instructions.md | Per-CLI configurations |
 
 ## Commands
@@ -94,12 +94,17 @@ npx javi-ai sync --target claude --mode merge
 
 ## Extension Model
 
-Some upstream skills ship with an `EXTENSION.md` alongside the canonical `SKILL.md`. Extensions are additions that get appended during installation — the upstream `SKILL.md` is never modified.
+Skills follow a 3-layer model (ADR-003). Upstream files are never modified. Customizations live in `delta/`:
+
+- **`delta/overrides/`** — Modified `SKILL.md` files that replace the upstream version (10 overrides)
+- **`delta/extensions/`** — `EXTENSION.md` files appended to upstream at install time (2 extensions)
 
 ```
-upstream/skills/sdd-explore/
-├── SKILL.md       ← exact copy from upstream (never edit)
+delta/extensions/sdd-explore/
 └── EXTENSION.md   ← additions, appended at install time
+
+delta/overrides/sdd-apply/
+└── SKILL.md       ← replaces upstream SKILL.md entirely
 ```
 
 Each extension carries a tracking comment:
