@@ -169,6 +169,7 @@ Match keywords in user message against skill trigger definitions. No LLM — jus
 | `project memory`, `CLAUDE.md`, `retrospective`, `one-way door` | `project-memory` | Medium |
 | `auto-continue`, `keep going`, `don't stop` | `auto-continuation` | High |
 | `scan skill`, `skill security`, `injection` | `skillguard` | High |
+| `circuit breaker`, `runaway agent`, `agent limits`, `kill agent` | `circuit-breaker` | High |
 
 ### Matching Rules
 
@@ -231,6 +232,7 @@ Quick reference — every routable target and its primary tier.
 | `adversarial-review` | — | — | `adversarial`, `multi-perspective review` |
 | `agent-testing` | — | — | `test agent`, `prompt test` |
 | `agent-governance` | — | — | `governance`, `permissions` |
+| `circuit-breaker` | — | — | `circuit breaker`, `runaway agent` |
 | `auto-continuation` | — | — | `keep going`, `auto-continue` |
 | `codebase-cartography` | — | — | `codebase map`, `onboarding` |
 | `cost-tracking` | — | — | `cost`, `token usage` |
