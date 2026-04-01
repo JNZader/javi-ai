@@ -36,7 +36,7 @@ flowchart TB
         direction TB
         UP["upstream/<br/>12 ATL skills + 15 GS skills (unmodified)<br/>8 agent groups from PSF"]
         DL["delta/<br/>10 overrides + 2 extensions<br/>Orchestrators + unified instructions"]
-        OW["own/<br/>29 custom skills<br/>3 plugins, 2 hooks"]
+        OW["own/<br/>42 custom skills<br/>3 plugins, 2 hooks"]
         CF["configs/<br/>Per-CLI config files<br/>Claude, OpenCode, Gemini, Qwen, Codex, Copilot"]
     end
 
@@ -54,7 +54,7 @@ flowchart TB
 |-------|----------|--------|
 | `upstream/` | 12 ATL skills + 15 GS skills (unmodified), 8 agent groups | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite), [Gentleman-Skills](https://github.com/Gentleman-Programming/gentleman-skills), PSF |
 | `delta/` | 10 overrides + 2 extensions, Claude orchestrators, OpenCode agents + domain agents + commands, unified instructions | Modified upstream (ADR-003) |
-| `own/` | 29 custom skills, 3 plugins (merge-checks, mermaid, trim-md), 2 Claude hooks | Original creations |
+| `own/` | 42 custom skills, 3 plugins (merge-checks, mermaid, trim-md), 2 Claude hooks | Original creations |
 | `configs/` | CLAUDE.md, opencode.json, QWEN.md, gemini-settings.json, codex-config.toml, copilot-instructions.md | Per-CLI configurations |
 
 ## Commands
