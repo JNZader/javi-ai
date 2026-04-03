@@ -58,6 +58,12 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
           content = `${content}\n\n---\n\n${ext}`
         }
         await fs.writeFile(path.join(destDir, 'SKILL.md'), content, 'utf-8')
+
+        // Copy references/ subdirectory if present (deep context files loaded on-demand)
+        const refsDir = path.join(skillPath, 'references')
+        if (await fs.pathExists(refsDir)) {
+          await fs.copy(refsDir, path.join(destDir, 'references'), { overwrite: true })
+        }
       } else {
         // Multi-file skill (e.g. angular/) — copy entire directory
         await fs.copy(skillPath, destDir, { overwrite: true })

@@ -215,4 +215,67 @@ describe('installSkillsForCLI', () => {
     expect(result).toContain('skill-creator')
     expect(result).toContain('obsidian-braindump')
   })
+
+  // ── references/ subdirectory support ──────────────────────────────────
+
+  it('copies references/ subdirectory for upstream skills that have one', async () => {
+    // Add references/ to an existing upstream skill
+    const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
+    const refsDir = path.join(atlSkills, 'sdd-explore', 'references')
+    await fs.ensureDir(refsDir)
+    await fs.writeFile(path.join(refsDir, 'patterns.md'), '# Patterns Reference', 'utf-8')
+    await fs.writeFile(path.join(refsDir, 'examples.md'), '# Examples Reference', 'utf-8')
+
+    await installSkillsForCLI('claude', false)
+
+    // references/ should be copied to destination
+    const destRefs = path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'references')
+    expect(await fs.pathExists(destRefs)).toBe(true)
+    expect(await fs.pathExists(path.join(destRefs, 'patterns.md'))).toBe(true)
+    expect(await fs.pathExists(path.join(destRefs, 'examples.md'))).toBe(true)
+
+    const content = await fs.readFile(path.join(destRefs, 'patterns.md'), 'utf-8')
+    expect(content).toBe('# Patterns Reference')
+  })
+
+  it('does not fail when upstream skill has no references/ directory', async () => {
+    await installSkillsForCLI('claude', false)
+
+    // react-19 has no references/ — should install normally without error
+    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'react-19', 'SKILL.md'))).toBe(true)
+    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'react-19', 'references'))).toBe(false)
+  })
+
+  it('copies references/ from own skills via full directory copy', async () => {
+    // Own skills use fs.copy for entire directory, so references/ comes free
+    const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
+    const refsDir = path.join(ownSkills, 'skill-creator', 'references')
+    await fs.ensureDir(refsDir)
+    await fs.writeFile(path.join(refsDir, 'spec.md'), '# Skill Spec', 'utf-8')
+
+    await installSkillsForCLI('claude', false)
+
+    const destRefs = path.join(FIXED_CLAUDE_DEST, 'skill-creator', 'references')
+    expect(await fs.pathExists(destRefs)).toBe(true)
+    expect(await fs.readFile(path.join(destRefs, 'spec.md'), 'utf-8')).toBe('# Skill Spec')
+  })
+
+  it('overwrites stale references/ on reinstall', async () => {
+    const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
+    const refsDir = path.join(atlSkills, 'sdd-explore', 'references')
+    await fs.ensureDir(refsDir)
+    await fs.writeFile(path.join(refsDir, 'old.md'), '# Old', 'utf-8')
+
+    await installSkillsForCLI('claude', false)
+
+    // Update the source references
+    await fs.writeFile(path.join(refsDir, 'old.md'), '# Updated', 'utf-8')
+    await fs.writeFile(path.join(refsDir, 'new.md'), '# New', 'utf-8')
+
+    await installSkillsForCLI('claude', false)
+
+    const destRefs = path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'references')
+    expect(await fs.readFile(path.join(destRefs, 'old.md'), 'utf-8')).toBe('# Updated')
+    expect(await fs.pathExists(path.join(destRefs, 'new.md'))).toBe(true)
+  })
 })
