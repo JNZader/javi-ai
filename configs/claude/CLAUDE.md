@@ -81,6 +81,8 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-apply [change-name]`    | Implement tasks                             |
 | `/sdd-verify [change-name]`   | Validate implementation                     |
 | `/sdd-archive [change-name]`  | Sync specs + archive                        |
+| `/sdd-compound [change-name]` | Extract learnings post-archive (compound loop) |
+| `/sdd-new --compete <name>`   | Start change with competitive planning       |
 
 ### Command → Skill Mapping
 
@@ -94,6 +96,8 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-apply`    | sdd-apply                                         | `~/.claude/skills/sdd-apply/SKILL.md`   |
 | `/sdd-verify`   | sdd-verify                                        | `~/.claude/skills/sdd-verify/SKILL.md`  |
 | `/sdd-archive`  | sdd-archive                                       | `~/.claude/skills/sdd-archive/SKILL.md` |
+| `/sdd-compound` | sdd-compound                                      | `own/skills/compound-loop/SKILL.md`     |
+| `--compete`     | sdd-propose-competitive → sdd-propose              | `own/skills/competitive-planning/SKILL.md` |
 
 ### Multi-Perspective Explore
 
@@ -308,6 +312,100 @@ The orchestrator MUST NOT read exploration outputs or merge them itself. Synthes
 - `sdd-apply/SKILL.md` — Implement code (v2.0 with TDD support)
 - `sdd-verify/SKILL.md` — Validate implementation (v2.0 with real execution)
 - `sdd-archive/SKILL.md` — Archive change
+- `compound-loop/SKILL.md` — Post-archive learning extraction (compound engineering loop)
+- `discovery-relay/SKILL.md` — Cross-wave discovery relay for parallel apply
+- `competitive-planning/SKILL.md` — Dual-dispatch competitive planning for proposals
+
+### 4-Tier Cost-Optimized Routing
+
+Before dispatching any user input, the orchestrator resolves intent through a tiered pipeline. Each tier is cheaper than the next. Stop at the FIRST tier that resolves.
+
+```
+Tier 1: PATTERN MATCH (zero extra tokens)
+├── Input matches an exact /sdd-* command → map to known handler via Command → Skill Mapping table
+├── Input matches "sdd init", "sdd new", "sdd ff", etc. → map via SDD Triggers table
+└── Resolution: immediate dispatch, no analysis needed
+
+Tier 2: SESSION STATE (minimal tokens — read DAG state only)
+├── User says "continue", "next", "seguí", "dale" without specifying a command
+├── Check tracked DAG state → determine which artifact is missing → dispatch next phase
+├── User says "apply" without specifying tasks → check tasks artifact → batch next incomplete tasks
+└── Resolution: state lookup + deterministic next step
+
+Tier 3: KEYWORD CLASSIFICATION (low tokens — parse intent from keywords)
+├── User message contains SDD-adjacent keywords but no exact command
+├── Keywords: "feature", "refactor", "bug", "implement", "design", "spec", "test", "verify"
+├── Map keywords to likely SDD phase or suggest /sdd-new if it's a new change
+├── Examples:
+│   ├── "I want to add dark mode" → suggest /sdd-new dark-mode
+│   ├── "check if the code matches the spec" → /sdd-verify
+│   └── "break this into tasks" → /sdd-continue (tasks phase)
+└── Resolution: keyword → command mapping, confirm with user if ambiguous
+
+Tier 4: FULL LLM ANALYSIS (full token cost — last resort)
+├── None of tiers 1-3 resolved the intent
+├── User message is complex, ambiguous, or multi-intent
+├── Orchestrator analyzes the full message to determine action
+└── Resolution: LLM reasoning to classify intent and route
+```
+
+**Routing rules:**
+- Most SDD interactions resolve at Tier 1 (exact commands) or Tier 2 (session continuations)
+- Tier 3 handles natural-language requests that map to known SDD phases
+- Tier 4 is for genuinely ambiguous or novel requests — if you reach Tier 4 frequently, the keyword table in Tier 3 needs expanding
+- NEVER skip tiers — always evaluate from Tier 1 downward
+- Log which tier resolved (internally) to track routing efficiency
+
+### Circuit Breaker for Sub-Agents
+
+The orchestrator monitors sub-agent execution and terminates runaway agents. This prevents context waste and infinite loops.
+
+#### Kill Conditions
+
+A sub-agent MUST be terminated if ANY of these conditions are met:
+
+| Condition | Threshold | Detection |
+|-----------|-----------|-----------|
+| Token overconsumption | >50k tokens consumed by a single sub-agent | Monitor token count in sub-agent response |
+| Time exceeded | >10 minutes elapsed | Track wall-clock time from dispatch to return |
+| Loop detected | Same tool call repeated 3+ times with identical or near-identical arguments | Inspect sub-agent tool call pattern in response |
+| No progress | Sub-agent reports 0 tasks completed after consuming >20k tokens | Check apply-progress against token expenditure |
+
+#### On Kill — Recovery Protocol
+
+When a sub-agent is terminated:
+
+```
+1. SAVE partial progress immediately:
+   ├── If sub-agent produced any code changes → note which files were modified
+   ├── If sub-agent updated any artifacts → preserve the last known good state
+   └── Save a circuit-breaker report:
+       mem_save(
+         title: "sdd/{change-name}/circuit-breaker",
+         topic_key: "sdd/{change-name}/circuit-breaker",
+         type: "architecture",
+         project: "{project}",
+         content: "Kill reason: {reason}. Tokens consumed: {N}. Tasks attempted: {list}. Partial progress: {summary}."
+       )
+
+2. REPORT to user:
+   ├── Which sub-agent was killed and why
+   ├── What partial progress was saved
+   └── Suggested next action:
+       ├── "Batch was too large — try smaller batch (e.g., 1-2 tasks instead of 1-5)"
+       ├── "Sub-agent entered a loop on {tool} — likely a blocking issue in {file}"
+       └── "Task {X} is more complex than estimated — consider splitting it"
+
+3. Do NOT auto-retry the killed sub-agent
+4. Do NOT proceed to the next batch — wait for user decision
+```
+
+#### Prevention Guidelines
+
+To minimize circuit breaker triggers:
+- Keep apply batches small (2-3 tasks per sub-agent, not 5+)
+- Prefer focused sub-agents (one concern per dispatch)
+- If a sub-agent was killed for token overconsumption, the next dispatch for those tasks should have a tighter scope
 
 ### Orchestrator Rules (apply to the lead agent ONLY)
 
@@ -398,12 +496,15 @@ Load and follow any skills relevant to your task.
 | Verify report | `sdd/{change}/verify-report` |
 | Archive report | `sdd/{change}/archive-report` |
 | DAG state | `sdd/{change}/state` |
+| Compound learnings | `sdd/{change}/compound` |
+| Discoveries (per wave) | `sdd/{change}/discoveries/wave-{N}/task-{id}` |
+| Competitive judge report | `sdd/{change}/competitive-report` |
 | Skill registry | `skill-registry` |
 
 ### Dependency Graph
 
 ```
-proposal → specs ──→ tasks → apply → verify → archive
+proposal → specs ──→ tasks → apply → verify → archive → compound
               ↕
            design
 ```
@@ -411,6 +512,7 @@ proposal → specs ──→ tasks → apply → verify → archive
 - specs and design can be created in parallel (both depend only on proposal)
 - tasks depends on BOTH specs and design
 - verify is optional but recommended before archive
+- compound is optional post-archive — extracts learnings for future sessions
 
 ### State Tracking
 
@@ -431,6 +533,84 @@ Show user a summary after ALL are done, not between each one.
 For large task lists, batch tasks to sub-agents (e.g., "implement Phase 1, tasks 1.1-1.3").
 Do NOT send all tasks at once — break into manageable batches.
 After each batch, show progress to user and ask to continue.
+
+### Ralph Loop (Context-Fresh Apply Iterations)
+
+Long apply sessions accumulate stale context in sub-agents, leading to hallucinations, repeated mistakes, and degraded output quality ("context rot"). The Ralph Loop ensures each sub-agent batch starts with FRESH context by persisting state externally and loading only what the next agent needs.
+
+#### Protocol
+
+```
+Between every apply batch, the orchestrator MUST:
+
+1. PERSIST state externally before launching the next sub-agent:
+   ├── Update tasks artifact with [x] marks for completed tasks
+   ├── Save apply-progress artifact with:
+   │   ├── Completed task IDs and summaries
+   │   ├── Files created/modified (paths only)
+   │   ├── Discovered patterns (e.g., "project uses barrel exports", "tests co-located with source")
+   │   └── Any deviations from design noted by the previous sub-agent
+   └── If using engram: mem_update for tasks, mem_save for apply-progress
+       If using openspec: update tasks.md and write apply-progress.md
+
+2. LAUNCH a NEW sub-agent (not the same one) with ONLY:
+   ├── Change name
+   ├── Tasks to implement THIS batch (not all tasks)
+   ├── Artifact IDs or file paths to retrieve specs/design/tasks
+   ├── Discovered patterns from previous batches (compact list, not full conversation)
+   └── Files modified by previous batches (paths only, so new agent can read current state)
+
+3. The new sub-agent MUST NOT receive:
+   ├── The full conversation history from previous batches
+   ├── Code snippets from previous implementations
+   ├── Error traces or debugging sessions from previous batches
+   └── Any context that is not directly needed for the current batch
+```
+
+#### What Gets Passed Between Batches
+
+| Passed (compact) | NOT Passed (stale) |
+|-------------------|--------------------|
+| Task list with completion status | Previous sub-agent's full conversation |
+| Artifact IDs (engram) or file paths (openspec) | Code snippets from previous batches |
+| Discovered patterns (1-line summaries) | Error traces or debug sessions |
+| Files modified (paths only) | Tool call history |
+| Deviations from design (if any) | Reasoning or chain-of-thought |
+
+#### Discovered Patterns
+
+As sub-agents implement tasks, they discover project conventions that are NOT in the specs or design. These MUST be relayed to subsequent batches:
+
+```
+Examples of discovered patterns:
+- "All components use forwardRef"
+- "Tests use test-id attributes, not class selectors"
+- "Barrel exports in every module index.ts"
+- "Error handling uses Result<T, E> pattern, not exceptions"
+- "API calls go through a centralized httpClient, not raw fetch"
+
+Format in apply-progress artifact:
+### Discovered Patterns
+- {pattern 1}
+- {pattern 2}
+```
+
+#### Ralph Loop in Sub-Agent Prompt
+
+When launching a batch under Ralph Loop, the orchestrator adds this to the sub-agent prompt:
+
+```
+RALPH LOOP CONTEXT (batch {N} of {total}):
+- Previous batches completed: {list of task IDs}
+- Files modified by previous batches: {list of paths}
+- Discovered patterns:
+  - {pattern 1}
+  - {pattern 2}
+- Deviations from design: {list or "None"}
+
+You are a FRESH agent. Do NOT assume knowledge from previous batches.
+Read the specs, design, and any modified files directly — do not rely on summaries.
+```
 
 ### Parallel Apply with Worktrees
 
@@ -523,6 +703,168 @@ If some sub-agents succeed and others fail:
 3. Leave failed worktrees intact for inspection
 4. User decides: retry failed tasks, fix manually, or abort
 5. Do NOT auto-retry failed tasks
+
+### Compound Engineering Loop (Post-Archive)
+
+After `sdd-archive` completes, the orchestrator SHOULD suggest running `/sdd-compound` to capture learnings.
+
+#### Trigger Conditions
+
+- Orchestrator completes `sdd-archive` successfully
+- User says: "compound", "what did we learn", "document learnings", `/sdd-compound`
+
+#### Dispatch Pattern
+
+```
+Task(
+  description: 'compound loop for {change-name}',
+  prompt: 'You are an SDD sub-agent. Read the skill file at own/skills/compound-loop/SKILL.md FIRST.
+
+  CONTEXT:
+  - Project: {project path}
+  - Change: {change-name}
+  - Artifact store mode: {mode}
+
+  TASK:
+  Extract learnings from the completed change. Review all SDD artifacts
+  (proposal, spec, design, tasks, apply-progress, verify-report, archive-report)
+  and conversation history. Capture patterns, gotchas, and decisions.
+
+  Save compound learnings to engram:
+  mem_save(
+    title: "sdd/{change-name}/compound",
+    topic_key: "sdd/{change-name}/compound",
+    type: "learning",
+    project: "{project}",
+    content: "{structured learnings}"
+  )
+
+  Also persist to learnings.md in project root (prepend, newest first).
+  Suggest CLAUDE.md improvements if warranted (never auto-edit).
+
+  Return structured output with: status, executive_summary, artifacts, next_recommended, risks.'
+)
+```
+
+#### Orchestrator Behavior
+
+After archive sub-agent returns:
+1. Show archive summary to user
+2. Suggest: "Change archived. Want to run `/sdd-compound` to capture learnings?"
+3. If user agrees, dispatch compound sub-agent
+4. Show compound summary when done
+
+### Discovery Relay (Between Apply Waves)
+
+When running parallel apply with worktrees, the orchestrator injects cross-wave discoveries to prevent repeated mistakes.
+
+#### Protocol
+
+```
+Wave N completes
+  → Collect discoveries: mem_search("sdd/{change}/discoveries/wave-{N}", limit: 10)
+  → For each: mem_get_observation(id) → full content
+  → Merge branches
+  → Format DISCOVERIES block
+  → Inject into Wave N+1 sub-agent prompts
+  → Dispatch Wave N+1
+```
+
+#### Wave N+1 Prompt Injection
+
+Append to each sub-agent prompt in waves after the first:
+
+```
+DISCOVERIES FROM PREVIOUS WAVES:
+(Runtime insights from completed tasks. Use these to avoid known pitfalls.)
+
+- [Task 1.1] Config loader requires synchronous initialization — do not use async import()
+- [Task 1.3] AuthService.validate() throws on empty string, not null — guard accordingly
+```
+
+#### Sub-Agent Save Instruction
+
+Append to ALL parallel apply sub-agent prompts (all waves):
+
+```
+DISCOVERY RELAY:
+After completing your task(s), save any non-obvious runtime insights:
+mem_save(
+  title: "sdd/{change}/discoveries/wave-{N}/task-{id}",
+  topic_key: "sdd/{change}/discoveries/wave-{N}/task-{id}",
+  type: "discovery",
+  project: "{project}",
+  content: "**What**: ...\n**Why**: ...\n**Where**: ...\n**Impact**: ..."
+)
+Skip if no discoveries.
+```
+
+See `own/skills/discovery-relay/SKILL.md` for full protocol and prompt templates.
+
+### Competitive Planning (`--compete` flag)
+
+When triggered, the orchestrator dispatches TWO competing proposal sub-agents with opposing optimization lenses, then a judge evaluates and selects (or merges) the best plan.
+
+#### Trigger Conditions
+
+Competitive planning activates ONLY when explicitly triggered. **Default is always single proposal.**
+
+Triggers (any one activates):
+- User says: "competitive plan", "compete", "dual plan", or uses `--compete` flag
+- Change is marked `critical: true`
+- Config `competitive_planning.enabled: true` in `openspec/config.yaml`
+
+#### Dispatch Pattern
+
+```
+# Step 1: Gather context (same as normal sdd-propose)
+context = gather_proposal_context(change_name)
+
+# Step 2: Dispatch competitors in PARALLEL (single message, mandatory)
+Task(competitor_a_prompt + context)  # Simplicity lens (Alpha)
+Task(competitor_b_prompt + context)  # Extensibility lens (Beta)
+
+# Step 3: Wait for both to complete
+
+# Step 4: Dispatch judge (sequential, after both return)
+# Judge sees neutral labels (Alpha/Beta) — NO lens names
+Task(judge_prompt + plan_alpha + plan_beta + specs)
+
+# Step 5: Present judge report to user
+# User confirms or overrides selection
+
+# Step 6: Feed winning plan into sdd-propose as the Approach
+Task(sdd_propose_prompt + winning_plan)
+```
+
+#### Config Schema
+
+```yaml
+competitive_planning:
+  enabled: true
+  trigger: critical_only    # critical_only | always | manual
+  lenses:                   # Override default lenses (exactly 2)
+    - name: "simplicity"
+      goal: "Fewest moving parts, lowest risk, YAGNI-first"
+    - name: "extensibility"
+      goal: "Clean abstractions, future growth, open-closed"
+  criteria:                 # Evaluation weights (must sum to 100)
+    feasibility: 30
+    risk: 25
+    token_cost: 20
+    spec_alignment: 25
+```
+
+#### Rules
+
+1. **Always dispatch both competitors in a SINGLE message** — parallel execution mandatory
+2. **Competitors MUST NOT know each other's lens** — no cross-contamination
+3. **Judge sees neutral labels** (Alpha/Beta) — prevent ordering bias
+4. **Judge MUST justify every criterion** — no unexplained scores
+5. **Max 2 competitors** — more is diminishing returns at exponential cost
+6. **Cost awareness** — doubles planning tokens; only use for critical changes
+
+See `own/skills/competitive-planning/SKILL.md` for full protocol, prompt templates, and configuration reference.
 
 ### When to Suggest SDD
 

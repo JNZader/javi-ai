@@ -170,23 +170,25 @@ Update `tasks.md` — change `- [ ]` to `- [x]` for completed tasks:
 - [ ] 1.3 Add auth routes to `internal/server/server.go`  ← still pending
 ```
 
-### Step 5: Persist Progress
+### Step 5: Persist Progress (Ralph Loop Compliance)
 
 **This step is MANDATORY — do NOT skip it.**
+
+This step serves dual purposes: (1) standard progress persistence for sdd-verify, and (2) Ralph Loop state handoff so the NEXT sub-agent batch starts with fresh context and complete knowledge.
 
 If mode is `engram`:
 1. Update the tasks artifact with completion marks:
    ```
    mem_update(id: {tasks-observation-id}, content: "{updated tasks with [x] marks}")
    ```
-2. Save progress report:
+2. Save progress report in Ralph Loop format:
    ```
    mem_save(
      title: "sdd/{change-name}/apply-progress",
      topic_key: "sdd/{change-name}/apply-progress",
      type: "architecture",
      project: "{project}",
-     content: "{your implementation progress report}"
+     content: "{Ralph Loop progress report — see format below}"
    )
    ```
 
@@ -194,7 +196,45 @@ If mode is `openspec` or `hybrid`: tasks.md was already updated in Step 4.
 
 If mode is `hybrid`: also call `mem_save` and `mem_update` as above.
 
-If you skip this step, sdd-verify will NOT be able to find your progress and the pipeline BREAKS.
+If you skip this step, sdd-verify will NOT be able to find your progress and the pipeline BREAKS. Additionally, the next Ralph Loop batch will lack context and may produce inconsistent code.
+
+#### Ralph Loop Progress Report Format
+
+The apply-progress artifact MUST include these sections to enable clean handoff to the next fresh sub-agent:
+
+```markdown
+## Apply Progress — {change-name} (Batch {N})
+
+### Completed Tasks
+- [x] {task ID}: {brief summary of what was done}
+
+### Files Changed
+| File | Action |
+|------|--------|
+| `path/to/file.ext` | Created |
+| `path/to/other.ext` | Modified |
+
+### Discovered Patterns
+{Conventions found during implementation that are NOT in specs/design.
+These get relayed to subsequent batches so they maintain consistency.}
+- {pattern 1}
+- {pattern 2}
+
+### Deviations from Design
+{Any places where implementation diverged from design.md and why.
+"None — implementation matches design." if no deviations.}
+
+### Remaining Tasks
+- [ ] {next task}
+```
+
+#### Reading Ralph Loop Context
+
+If the orchestrator passes a `RALPH LOOP CONTEXT` block in your prompt, you are a continuation batch. In that case:
+1. Read the listed discovered patterns and apply them to your implementation
+2. Check files modified by previous batches to understand current state (read the actual files, do not assume)
+3. Do NOT repeat work already marked as completed
+4. Add any NEW discovered patterns to your progress report for the next batch
 
 ### Step 6: Return Summary
 
@@ -240,6 +280,54 @@ If none, say "None."}
 {N}/{total} tasks complete. {Ready for next batch / Ready for verify / Blocked by X}
 ```
 
+## Discovery Relay (Parallel Apply Only)
+
+When running in parallel apply mode (worktrees), sub-agents are isolated and cannot see each other's work. The discovery relay protocol bridges this gap.
+
+### Saving Discoveries
+
+After completing your assigned task(s), check if you encountered any **non-obvious runtime insights** (API constraints, initialization order, type quirks, pattern deviations, performance gotchas).
+
+If YES — save each discovery to engram:
+
+```
+mem_save(
+  title: "sdd/{change-name}/discoveries/wave-{wave-number}/task-{task-id}",
+  topic_key: "sdd/{change-name}/discoveries/wave-{wave-number}/task-{task-id}",
+  type: "discovery",
+  project: "{project}",
+  content: "**What**: {one-line insight}
+**Why**: {what you were doing when you found it}
+**Where**: {file paths affected}
+**Impact**: {which future tasks or areas need this}"
+)
+```
+
+If NO discoveries — skip. Do NOT save empty discoveries.
+
+### Reading Injected Discoveries
+
+If your prompt contains a `DISCOVERIES FROM PREVIOUS WAVES` block, read it carefully before implementing. These are runtime insights from completed tasks in prior waves. Use them to:
+
+- Avoid repeating known mistakes
+- Follow constraints discovered by other sub-agents
+- Apply optimizations already identified
+
+### When to Save vs Skip
+
+| Scenario | Save Discovery? |
+|----------|----------------|
+| Found API constraint not in design | Yes |
+| Discovered initialization order dependency | Yes |
+| Used a pattern already in specs | No |
+| Hit a bug in a dependency | Yes |
+| Task completed without surprises | No |
+| Found performance optimization opportunity | Yes |
+
+Keep each discovery under 100 words. Concise > comprehensive.
+
+See `own/skills/discovery-relay/SKILL.md` for the full protocol.
+
 ## Rules
 
 - ALWAYS read specs before implementing — specs are your acceptance criteria
@@ -254,3 +342,6 @@ If none, say "None."}
 - If TDD mode is detected (Step 3), ALWAYS follow the RED → GREEN → REFACTOR cycle — never skip RED (writing the failing test first)
 - When running tests during TDD, run ONLY the relevant test file/suite, not the entire test suite (for speed)
 - Return a structured envelope with: `status`, `executive_summary`, `detailed_report` (optional), `artifacts`, `next_recommended`, and `risks`
+- ALWAYS include discovered patterns in your apply-progress artifact (Ralph Loop compliance) — even if you think they are "obvious". The next sub-agent has zero context from your session.
+- When receiving Ralph Loop context from the orchestrator, treat discovered patterns as constraints — do NOT contradict them unless the specs explicitly say otherwise
+- NEVER include your full reasoning, debug traces, or tool call history in the progress artifact — only structured summaries. The goal is minimal, actionable context for the next fresh agent.

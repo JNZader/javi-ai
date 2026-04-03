@@ -163,7 +163,10 @@ The following specs now reflect the new behavior:
 
 ### SDD Cycle Complete
 The change has been fully planned, implemented, verified, and archived.
-Ready for the next change.
+
+### Next Step
+Recommend running `/sdd-compound {change-name}` to extract learnings from this change.
+The compound loop captures patterns, gotchas, and decisions for future sessions.
 ```
 
 ## Rules
@@ -177,3 +180,4 @@ Ready for the next change.
 - If `openspec/changes/archive/` doesn't exist, create it
 - Apply any `rules.archive` from `openspec/config.yaml`
 - Return a structured envelope with: `status`, `executive_summary`, `detailed_report` (optional), `artifacts`, `next_recommended`, and `risks`
+- ALWAYS include `next_recommended: "sdd-compound"` in the return envelope — the orchestrator uses this to suggest the compound loop
