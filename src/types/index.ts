@@ -13,6 +13,7 @@ export interface CLIOption {
   label: string
   configPath: string
   skillsPath: string
+  pluginsPath: string
   available: boolean
 }
 
@@ -31,12 +32,35 @@ export interface SkillManifest {
   checksum?: string
 }
 
+// --- Plugin types ---
+
+export interface PluginManifest {
+  name: string
+  version: string
+  description: string
+  dependencies?: string[]
+  compatible_tools?: CLI[]
+  triggers?: string[]
+}
+
+export type PluginFormat = 'plugin' | 'legacy-skill'
+
+export interface InstalledPlugin {
+  name: string
+  version: string
+  format: PluginFormat
+  source: 'upstream' | 'delta' | 'own'
+  installedAt: string
+  checksum?: string
+}
+
 export interface Manifest {
   version: string
   installedAt: string
   updatedAt: string
   clis: CLI[]
   skills: Record<string, SkillManifest>
+  plugins?: Record<string, InstalledPlugin>
 }
 
 export type InstallStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped'

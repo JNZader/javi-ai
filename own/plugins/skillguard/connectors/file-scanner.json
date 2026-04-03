@@ -1,0 +1,22 @@
+{
+  "name": "skillguard-file-scanner",
+  "description": "MCP tool definition for scanning files for security patterns",
+  "type": "mcp-tool",
+  "tools_required": ["Read", "Bash", "Glob", "Grep"],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "target_path": {
+        "type": "string",
+        "description": "Path to the skill/plugin directory to scan"
+      },
+      "severity_filter": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "all"],
+        "default": "all",
+        "description": "Minimum severity level to report"
+      }
+    },
+    "required": ["target_path"]
+  }
+}

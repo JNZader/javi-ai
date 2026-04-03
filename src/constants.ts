@@ -10,6 +10,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'Claude Code',
     configPath: path.join(HOME, '.claude'),
     skillsPath: path.join(HOME, '.claude', 'skills'),
+    pluginsPath: path.join(HOME, '.claude', 'plugins'),
     available: true,
   },
   {
@@ -17,6 +18,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'OpenCode',
     configPath: path.join(HOME, '.config', 'opencode'),
     skillsPath: path.join(HOME, '.config', 'opencode', 'skill'),
+    pluginsPath: path.join(HOME, '.config', 'opencode', 'plugins'),
     available: true,
   },
   {
@@ -24,6 +26,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'Gemini CLI',
     configPath: path.join(HOME, '.gemini'),
     skillsPath: path.join(HOME, '.gemini', 'skills'),
+    pluginsPath: path.join(HOME, '.gemini', 'plugins'),
     available: true,
   },
   {
@@ -31,6 +34,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'Qwen',
     configPath: path.join(HOME, '.qwen'),
     skillsPath: path.join(HOME, '.qwen', 'skills'),
+    pluginsPath: path.join(HOME, '.qwen', 'plugins'),
     available: true,
   },
   {
@@ -38,6 +42,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'Codex CLI',
     configPath: path.join(HOME, '.codex'),
     skillsPath: path.join(HOME, '.codex', 'skills'),
+    pluginsPath: path.join(HOME, '.codex', 'plugins'),
     available: true,
   },
   {
@@ -45,6 +50,7 @@ export const CLI_OPTIONS: CLIOption[] = [
     label: 'GitHub Copilot',
     configPath: path.join(HOME, '.copilot'),
     skillsPath: path.join(HOME, '.copilot', 'skills'),
+    pluginsPath: path.join(HOME, '.copilot', 'plugins'),
     available: true,
   },
 ]

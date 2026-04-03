@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { CLI } from '../types/index.js'
 import { CLI_OPTIONS } from '../constants.js'
+import { detectFormat } from './plugins.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ASSETS_ROOT = path.resolve(__dirname, '../../')
@@ -36,6 +37,10 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
 
   // ── Helper: install a single upstream skill with delta layers ──────────
   async function installUpstreamSkill(skillDir: string, skillPath: string): Promise<void> {
+    // Skip plugin-format directories — they're handled by installPluginsForCLI
+    const format = await detectFormat(skillPath)
+    if (format === 'plugin') return
+
     const skillMd = path.join(skillPath, 'SKILL.md')
     const hasSkillMd = await fs.pathExists(skillMd)
 
@@ -108,11 +113,18 @@ async function installSkillsForCLI(cli: CLI, dryRun: boolean): Promise<string[]>
   }
 
   // ── Layer 4: own skills (highest priority, full directory copy) ────────
+  // Note: plugin-format directories (with manifest.json) are skipped here —
+  // they are handled by installPluginsForCLI in the plugins installer.
   if (await fs.pathExists(ownSkills)) {
     const dirs = await fs.readdir(ownSkills)
     for (const skillDir of dirs) {
       if (skillDir.startsWith('.')) continue
       const skillPath = path.join(ownSkills, skillDir)
+
+      // Skip plugin-format directories
+      const format = await detectFormat(skillPath)
+      if (format === 'plugin') continue
+
       const destDir = path.join(dest, skillDir)
       if (!dryRun) {
         const destStat = await fs.lstat(destDir).catch(() => null)

@@ -1,0 +1,16 @@
+{
+  "name": "skillguard",
+  "version": "1.0.0",
+  "description": "Security scanner for AI agent skills — detects credential theft, code injection, data exfiltration, and scope escape before installation.",
+  "dependencies": [],
+  "compatible_tools": ["claude", "opencode", "gemini", "qwen", "codex", "copilot"],
+  "triggers": [
+    "installing skills",
+    "reviewing skill files",
+    "skill security",
+    "javi-forge plugin add",
+    "scan",
+    "review security",
+    "check this skill"
+  ]
+}

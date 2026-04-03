@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import type { InstallOptions, InstallStep, CLI } from '../types/index.js'
 import { CLI_OPTIONS, BACKUP_DIR } from '../constants.js'
 import { installSkillsForCLI } from './skills.js'
+import { installPluginsForCLI } from './plugins.js'
 import { mergeMarkdownFile } from '../merger/markdown.js'
 import { mergeJsonFile } from '../merger/json.js'
 import { readManifest, writeManifest } from './manifest.js'
@@ -52,6 +53,17 @@ export async function runInstall(
         onStep({ id: `${cli}-hooks`, label: 'Hooks for Claude Code', status: 'done' })
       } catch (e) {
         onStep({ id: `${cli}-hooks`, label: 'Hooks for Claude Code', status: 'error', detail: String(e) })
+      }
+    }
+
+    // Plugins
+    if (options.features.includes('plugins')) {
+      onStep({ id: `${cli}-plugins`, label: `Installing plugins for ${cliOption.label}`, status: 'running' })
+      try {
+        const installed = await installPluginsForCLI(cli, options.dryRun)
+        onStep({ id: `${cli}-plugins`, label: `Plugins for ${cliOption.label}`, status: 'done', detail: `${installed.length} plugins` })
+      } catch (e) {
+        onStep({ id: `${cli}-plugins`, label: `Plugins for ${cliOption.label}`, status: 'error', detail: String(e) })
       }
     }
 
