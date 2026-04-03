@@ -83,6 +83,7 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-archive [change-name]`  | Sync specs + archive                        |
 | `/sdd-compound [change-name]` | Extract learnings post-archive (compound loop) |
 | `/sdd-new --compete <name>`   | Start change with competitive planning       |
+| `/sdd-apply --experiment <name>` | Run autonomous experiment loop (try-measure-keep/revert) |
 
 ### Command → Skill Mapping
 
@@ -98,6 +99,7 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-archive`  | sdd-archive                                       | `~/.claude/skills/sdd-archive/SKILL.md` |
 | `/sdd-compound` | sdd-compound                                      | `own/skills/compound-loop/SKILL.md`     |
 | `--compete`     | sdd-propose-competitive → sdd-propose              | `own/skills/competitive-planning/SKILL.md` |
+| `--experiment`  | sdd-experiment                                      | `own/skills/sdd-experiment/SKILL.md`       |
 
 ### Multi-Perspective Explore
 
@@ -315,6 +317,7 @@ The orchestrator MUST NOT read exploration outputs or merge them itself. Synthes
 - `compound-loop/SKILL.md` — Post-archive learning extraction (compound engineering loop)
 - `discovery-relay/SKILL.md` — Cross-wave discovery relay for parallel apply
 - `competitive-planning/SKILL.md` — Dual-dispatch competitive planning for proposals
+- `sdd-experiment/SKILL.md` — Autonomous try-measure-keep/revert experiment loop
 
 ### 4-Tier Cost-Optimized Routing
 
@@ -499,6 +502,7 @@ Load and follow any skills relevant to your task.
 | Compound learnings | `sdd/{change}/compound` |
 | Discoveries (per wave) | `sdd/{change}/discoveries/wave-{N}/task-{id}` |
 | Competitive judge report | `sdd/{change}/competitive-report` |
+| Experiment report | `sdd/{change}/experiment-report` |
 | Skill registry | `skill-registry` |
 
 ### Dependency Graph
@@ -865,6 +869,61 @@ competitive_planning:
 6. **Cost awareness** — doubles planning tokens; only use for critical changes
 
 See `own/skills/competitive-planning/SKILL.md` for full protocol, prompt templates, and configuration reference.
+
+### Autonomous Experiment Loop (`--experiment` flag)
+
+When triggered, the orchestrator dispatches an experiment sub-agent that runs a hypothesis-driven try-measure-keep/revert loop instead of standard apply.
+
+#### Trigger Conditions
+
+Experiment mode activates ONLY when explicitly triggered. **Default is always standard apply.**
+
+Triggers (any one activates):
+- User uses `--experiment` flag: `/sdd-apply --experiment change-name`
+- User says: "experiment", "try variations", "hypothesis loop", "autoresearch"
+
+#### Dispatch Pattern
+
+```
+Task(
+  description: 'experiment loop for {change-name}',
+  prompt: 'You are an SDD experiment sub-agent.
+  Read the skill at own/skills/sdd-experiment/SKILL.md FIRST.
+
+  CONTEXT:
+  - Change: {change-name}
+  - Project: {project path}
+  - Artifact store mode: {mode}
+  - Config: {experiment config from openspec/config.yaml or defaults}
+
+  TASK:
+  Run the autonomous experiment loop. Try up to {max_iterations} variations.
+  Focus area: {focus or "any relevant area from specs/design"}
+
+  Return structured output with: status, executive_summary, artifacts, next_recommended, risks.'
+)
+```
+
+#### Config Schema
+
+```yaml
+experiment:
+  max_iterations: 5          # Default: 5, Max: 10
+  confidence_threshold: 0.6  # Minimum score to keep a change
+  test_command: auto          # "auto" = detect, or explicit command
+  benchmark_command: null     # Optional benchmark command
+  focus: null                 # Optional: area to focus experiments on
+```
+
+#### Rules
+
+1. **Experiments require measurable tests** -- if no test runner detected, abort
+2. **Any test regression = automatic revert** -- confidence 0.0, no exceptions
+3. **Changes left staged, NOT committed** -- user decides when to commit
+4. **Max iterations is a hard limit** -- stop at cap even if more ideas exist
+5. **Never repeat a reverted hypothesis** -- try something different each time
+
+See `own/skills/sdd-experiment/SKILL.md` for full protocol, scoring, and report format.
 
 ### When to Suggest SDD
 
