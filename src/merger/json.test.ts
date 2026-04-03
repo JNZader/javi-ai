@@ -159,6 +159,34 @@ describe('deepMerge (via mergeJsonFile)', () => {
     const result = await runMerge({ name: 'hello' }, { name: '' })
     expect(result).toEqual({ name: '' })
   })
+
+  it('blocks prototype pollution via __proto__', async () => {
+    const result = await runMerge(
+      { safe: 1 },
+      JSON.parse('{"__proto__": {"polluted": true}, "safe": 2}')
+    )
+    expect(result).toEqual({ safe: 2 })
+    // Verify the global Object prototype was NOT polluted
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+
+  it('blocks prototype pollution via constructor', async () => {
+    const result = await runMerge(
+      { safe: 1 },
+      JSON.parse('{"constructor": {"prototype": {"polluted": true}}, "safe": 2}')
+    )
+    expect(result).toEqual({ safe: 2 })
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
+
+  it('blocks prototype pollution via prototype key', async () => {
+    const result = await runMerge(
+      { safe: 1 },
+      JSON.parse('{"prototype": {"polluted": true}, "safe": 2}')
+    )
+    expect(result).toEqual({ safe: 2 })
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+  })
 })
 
 // ─── Integration tests for mergeJsonFile ─────────────────────────────────────

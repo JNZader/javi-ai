@@ -3,9 +3,12 @@ import fs from 'fs-extra'
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 type JsonObject = { [key: string]: JsonValue }
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
 function deepMerge(target: JsonObject, source: JsonObject): JsonObject {
   const result = { ...target }
   for (const key of Object.keys(source)) {
+    if (DANGEROUS_KEYS.has(key)) continue
     const sv = source[key]
     const tv = target[key]
     if (
