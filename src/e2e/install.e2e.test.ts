@@ -5,224 +5,254 @@
  * runs the REAL compiled CLI as a subprocess with HOME overridden,
  * then verifies filesystem results in the fake HOME.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import fs from 'fs-extra'
-import path from 'path'
-import { createSandbox, removeSandbox, runCLI, countFiles, listDirs } from './helpers.js'
 
-describe('E2E: install', () => {
-  let sandbox: string
+import fs from "fs-extra";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	countFiles,
+	createSandbox,
+	listDirs,
+	removeSandbox,
+	runCLI,
+} from "./helpers.js";
 
-  beforeEach(async () => {
-    sandbox = await createSandbox()
-  })
+describe("E2E: install", () => {
+	let sandbox: string;
 
-  afterEach(async () => {
-    await removeSandbox(sandbox)
-  })
+	beforeEach(async () => {
+		sandbox = await createSandbox();
+	});
 
-  // ─── Test 1: dry-run produces output without creating files ──────────────
+	afterEach(async () => {
+		await removeSandbox(sandbox);
+	});
 
-  it('dry-run produces output without creating files', async () => {
-    const result = await runCLI(['install', '--dry-run', '--cli', 'claude'], sandbox)
+	// ─── Test 1: dry-run produces output without creating files ──────────────
 
-    // Should not create .claude/ directory
-    const claudeDir = path.join(sandbox, '.claude')
-    expect(await fs.pathExists(claudeDir)).toBe(false)
+	it("dry-run produces output without creating files", async () => {
+		const result = await runCLI(
+			["install", "--dry-run", "--cli", "claude"],
+			sandbox,
+		);
 
-    // Should not create manifest
-    const manifestPath = path.join(sandbox, '.javi-ai', 'manifest.json')
-    expect(await fs.pathExists(manifestPath)).toBe(false)
-  }, 30_000)
+		// Should not create .claude/ directory
+		const claudeDir = path.join(sandbox, ".claude");
+		expect(await fs.pathExists(claudeDir)).toBe(false);
 
-  // ─── Test 2: install --cli claude creates skills directory ───────────────
+		// Should not create manifest
+		const manifestPath = path.join(sandbox, ".javi-ai", "manifest.json");
+		expect(await fs.pathExists(manifestPath)).toBe(false);
+	}, 30_000);
 
-  it('install --cli claude creates skills directory with real skills', async () => {
-    const result = await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 2: install --cli claude creates skills directory ───────────────
 
-    expect(result.exitCode).toBe(0)
+	it("install --cli claude creates skills directory with real skills", async () => {
+		const result = await runCLI(["install", "--cli", "claude"], sandbox);
 
-    // Skills directory must exist
-    const skillsDir = path.join(sandbox, '.claude', 'skills')
-    expect(await fs.pathExists(skillsDir)).toBe(true)
+		expect(result.exitCode).toBe(0);
 
-    // At least 30 SKILL.md files (upstream ~36 + own ~4 = ~40)
-    const skillMdCount = await countFiles(skillsDir, 'SKILL.md')
-    expect(skillMdCount).toBeGreaterThanOrEqual(30)
-  }, 30_000)
+		// Skills directory must exist
+		const skillsDir = path.join(sandbox, ".claude", "skills");
+		expect(await fs.pathExists(skillsDir)).toBe(true);
 
-  // ─── Test 3: install --cli claude creates configs ────────────────────────
+		// At least 30 SKILL.md files (upstream ~36 + own ~4 = ~40)
+		const skillMdCount = await countFiles(skillsDir, "SKILL.md");
+		expect(skillMdCount).toBeGreaterThanOrEqual(30);
+	}, 30_000);
 
-  it('install --cli claude creates configs', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 3: install --cli claude creates configs ────────────────────────
 
-    // CLAUDE.md must exist and be non-empty
-    const claudeMd = path.join(sandbox, '.claude', 'CLAUDE.md')
-    expect(await fs.pathExists(claudeMd)).toBe(true)
-    const content = await fs.readFile(claudeMd, 'utf-8')
-    expect(content.length).toBeGreaterThan(0)
+	it("install --cli claude creates configs", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    // settings.json must exist and be valid JSON
-    const settingsJson = path.join(sandbox, '.claude', 'settings.json')
-    expect(await fs.pathExists(settingsJson)).toBe(true)
-    const settingsContent = await fs.readFile(settingsJson, 'utf-8')
-    expect(() => JSON.parse(settingsContent)).not.toThrow()
-  }, 30_000)
+		// CLAUDE.md must exist and be non-empty
+		const claudeMd = path.join(sandbox, ".claude", "CLAUDE.md");
+		expect(await fs.pathExists(claudeMd)).toBe(true);
+		const content = await fs.readFile(claudeMd, "utf-8");
+		expect(content.length).toBeGreaterThan(0);
 
-  // ─── Test 4: install --cli claude creates hooks ──────────────────────────
+		// settings.json must exist and be valid JSON
+		const settingsJson = path.join(sandbox, ".claude", "settings.json");
+		expect(await fs.pathExists(settingsJson)).toBe(true);
+		const settingsContent = await fs.readFile(settingsJson, "utf-8");
+		expect(() => JSON.parse(settingsContent)).not.toThrow();
+	}, 30_000);
 
-  it('install --cli claude creates hooks', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 4: install --cli claude creates hooks ──────────────────────────
 
-    const hooksDir = path.join(sandbox, '.claude', 'hooks')
-    expect(await fs.pathExists(hooksDir)).toBe(true)
+	it("install --cli claude creates hooks", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    // comment-check.sh must exist and be executable
-    const commentCheck = path.join(hooksDir, 'comment-check.sh')
-    expect(await fs.pathExists(commentCheck)).toBe(true)
-    const commentStat = await fs.stat(commentCheck)
-    expect(commentStat.mode & 0o111).toBeGreaterThan(0) // executable
+		const hooksDir = path.join(sandbox, ".claude", "hooks");
+		expect(await fs.pathExists(hooksDir)).toBe(true);
 
-    // todo-tracker.sh must exist and be executable
-    const todoTracker = path.join(hooksDir, 'todo-tracker.sh')
-    expect(await fs.pathExists(todoTracker)).toBe(true)
-    const todoStat = await fs.stat(todoTracker)
-    expect(todoStat.mode & 0o111).toBeGreaterThan(0) // executable
-  }, 30_000)
+		// comment-check.sh must exist and be executable
+		const commentCheck = path.join(hooksDir, "comment-check.sh");
+		expect(await fs.pathExists(commentCheck)).toBe(true);
+		const commentStat = await fs.stat(commentCheck);
+		expect(commentStat.mode & 0o111).toBeGreaterThan(0); // executable
 
-  // ─── Test 5: install --cli claude creates orchestrators ──────────────────
+		// todo-tracker.sh must exist and be executable
+		const todoTracker = path.join(hooksDir, "todo-tracker.sh");
+		expect(await fs.pathExists(todoTracker)).toBe(true);
+		const todoStat = await fs.stat(todoTracker);
+		expect(todoStat.mode & 0o111).toBeGreaterThan(0); // executable
+	}, 30_000);
 
-  it('install --cli claude creates orchestrators', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 5: install --cli claude creates orchestrators ──────────────────
 
-    // Orchestrators go to .claude/agents/claude/
-    const agentsDir = path.join(sandbox, '.claude', 'agents', 'claude')
-    expect(await fs.pathExists(agentsDir)).toBe(true)
+	it("install --cli claude creates orchestrators", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    // Should have orchestrator .md files
-    const files = await fs.readdir(agentsDir)
-    const mdFiles = files.filter(f => f.endsWith('.md'))
-    expect(mdFiles.length).toBeGreaterThanOrEqual(1)
-  }, 30_000)
+		// Orchestrators go to .claude/agents/claude/
+		const agentsDir = path.join(sandbox, ".claude", "agents", "claude");
+		expect(await fs.pathExists(agentsDir)).toBe(true);
 
-  // ─── Test 6: install --cli opencode creates correct paths ────────────────
+		// Should have orchestrator .md files
+		const files = await fs.readdir(agentsDir);
+		const mdFiles = files.filter((f) => f.endsWith(".md"));
+		expect(mdFiles.length).toBeGreaterThanOrEqual(1);
+	}, 30_000);
 
-  it('install --cli opencode creates correct paths', async () => {
-    const result = await runCLI(['install', '--cli', 'opencode'], sandbox)
+	// ─── Test 6: install --cli opencode creates correct paths ────────────────
 
-    expect(result.exitCode).toBe(0)
+	it("install --cli opencode creates correct paths", async () => {
+		const result = await runCLI(["install", "--cli", "opencode"], sandbox);
 
-    // Skills path for opencode
-    const skillsDir = path.join(sandbox, '.config', 'opencode', 'skill')
-    expect(await fs.pathExists(skillsDir)).toBe(true)
-    const skillMdCount = await countFiles(skillsDir, 'SKILL.md')
-    expect(skillMdCount).toBeGreaterThanOrEqual(30)
+		expect(result.exitCode).toBe(0);
 
-    // opencode.json config
-    const opencodeJson = path.join(sandbox, '.config', 'opencode', 'opencode.json')
-    expect(await fs.pathExists(opencodeJson)).toBe(true)
-    const jsonContent = await fs.readFile(opencodeJson, 'utf-8')
-    expect(() => JSON.parse(jsonContent)).not.toThrow()
-  }, 30_000)
+		// Skills path for opencode
+		const skillsDir = path.join(sandbox, ".config", "opencode", "skill");
+		expect(await fs.pathExists(skillsDir)).toBe(true);
+		const skillMdCount = await countFiles(skillsDir, "SKILL.md");
+		expect(skillMdCount).toBeGreaterThanOrEqual(30);
 
-  // ─── Test 7: install --cli claude,opencode installs both ─────────────────
+		// opencode.json config
+		const opencodeJson = path.join(
+			sandbox,
+			".config",
+			"opencode",
+			"opencode.json",
+		);
+		expect(await fs.pathExists(opencodeJson)).toBe(true);
+		const jsonContent = await fs.readFile(opencodeJson, "utf-8");
+		expect(() => JSON.parse(jsonContent)).not.toThrow();
+	}, 30_000);
 
-  it('install --cli claude,opencode installs both', async () => {
-    const result = await runCLI(['install', '--cli', 'claude,opencode'], sandbox)
+	// ─── Test 7: install --cli claude,opencode installs both ─────────────────
 
-    expect(result.exitCode).toBe(0)
+	it("install --cli claude,opencode installs both", async () => {
+		const result = await runCLI(
+			["install", "--cli", "claude,opencode"],
+			sandbox,
+		);
 
-    // Claude skills
-    const claudeSkills = path.join(sandbox, '.claude', 'skills')
-    expect(await fs.pathExists(claudeSkills)).toBe(true)
+		expect(result.exitCode).toBe(0);
 
-    // OpenCode skills
-    const opencodeSkills = path.join(sandbox, '.config', 'opencode', 'skill')
-    expect(await fs.pathExists(opencodeSkills)).toBe(true)
-  }, 30_000)
+		// Claude skills
+		const claudeSkills = path.join(sandbox, ".claude", "skills");
+		expect(await fs.pathExists(claudeSkills)).toBe(true);
 
-  // ─── Test 8: install creates manifest ────────────────────────────────────
+		// OpenCode skills
+		const opencodeSkills = path.join(sandbox, ".config", "opencode", "skill");
+		expect(await fs.pathExists(opencodeSkills)).toBe(true);
+	}, 30_000);
 
-  it('install creates manifest', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 8: install creates manifest ────────────────────────────────────
 
-    const manifestPath = path.join(sandbox, '.javi-ai', 'manifest.json')
-    expect(await fs.pathExists(manifestPath)).toBe(true)
+	it("install creates manifest", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    const manifest = await fs.readJSON(manifestPath)
-    expect(manifest).toHaveProperty('clis')
-    expect(manifest.clis).toContain('claude')
-    expect(manifest).toHaveProperty('version')
-    expect(manifest).toHaveProperty('installedAt')
-    expect(manifest).toHaveProperty('updatedAt')
-  }, 30_000)
+		const manifestPath = path.join(sandbox, ".javi-ai", "manifest.json");
+		expect(await fs.pathExists(manifestPath)).toBe(true);
 
-  // ─── Test 9: double install is idempotent ────────────────────────────────
+		const manifest = await fs.readJSON(manifestPath);
+		expect(manifest).toHaveProperty("clis");
+		expect(manifest.clis).toContain("claude");
+		expect(manifest).toHaveProperty("version");
+		expect(manifest).toHaveProperty("installedAt");
+		expect(manifest).toHaveProperty("updatedAt");
+	}, 30_000);
 
-  it('double install is idempotent (no errors)', async () => {
-    // First install
-    const first = await runCLI(['install', '--cli', 'claude'], sandbox)
-    expect(first.exitCode).toBe(0)
+	// ─── Test 9: double install is idempotent ────────────────────────────────
 
-    const skillsDir = path.join(sandbox, '.claude', 'skills')
-    const firstCount = await countFiles(skillsDir, 'SKILL.md')
+	it("double install is idempotent (no errors)", async () => {
+		// First install
+		const first = await runCLI(["install", "--cli", "claude"], sandbox);
+		expect(first.exitCode).toBe(0);
 
-    // Second install
-    const second = await runCLI(['install', '--cli', 'claude'], sandbox)
-    expect(second.exitCode).toBe(0)
+		const skillsDir = path.join(sandbox, ".claude", "skills");
+		const firstCount = await countFiles(skillsDir, "SKILL.md");
 
-    // Same skill count
-    const secondCount = await countFiles(skillsDir, 'SKILL.md')
-    expect(secondCount).toBe(firstCount)
-  }, 60_000)
+		// Second install
+		const second = await runCLI(["install", "--cli", "claude"], sandbox);
+		expect(second.exitCode).toBe(0);
 
-  // ─── Test 10: extension content is appended correctly ────────────────────
+		// Same skill count
+		const secondCount = await countFiles(skillsDir, "SKILL.md");
+		expect(secondCount).toBe(firstCount);
+	}, 60_000);
 
-  it('extension content is appended to upstream skills', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test 10: extension content is appended correctly ────────────────────
 
-    // sdd-explore has an EXTENSION.md
-    const sddExplore = path.join(sandbox, '.claude', 'skills', 'sdd-explore', 'SKILL.md')
-    expect(await fs.pathExists(sddExplore)).toBe(true)
+	it("extension content is appended to upstream skills", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    const content = await fs.readFile(sddExplore, 'utf-8')
+		// sdd-explore has an EXTENSION.md
+		const sddExplore = path.join(
+			sandbox,
+			".claude",
+			"skills",
+			"sdd-explore",
+			"SKILL.md",
+		);
+		expect(await fs.pathExists(sddExplore)).toBe(true);
 
-    // Must contain the separator between upstream and extension
-    expect(content).toContain('---')
+		const content = await fs.readFile(sddExplore, "utf-8");
 
-    // Must contain extension content
-    expect(content).toContain('Extensions')
-  }, 30_000)
+		// Must contain the separator between upstream and extension
+		expect(content).toContain("---");
 
-  // ─── Test: _shared directory is installed ────────────────────────────────
+		// Must contain extension content
+		expect(content).toContain("Extensions");
+	}, 30_000);
 
-  it('installs _shared conventions directory', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test: _shared directory is installed ────────────────────────────────
 
-    const sharedDir = path.join(sandbox, '.claude', 'skills', '_shared')
-    expect(await fs.pathExists(sharedDir)).toBe(true)
+	it("installs _shared conventions directory", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-    const persistenceContract = path.join(sharedDir, 'persistence-contract.md')
-    expect(await fs.pathExists(persistenceContract)).toBe(true)
-  }, 30_000)
+		const sharedDir = path.join(sandbox, ".claude", "skills", "_shared");
+		expect(await fs.pathExists(sharedDir)).toBe(true);
 
-  // ─── Test: own skills are installed ──────────────────────────────────────
+		const persistenceContract = path.join(sharedDir, "persistence-contract.md");
+		expect(await fs.pathExists(persistenceContract)).toBe(true);
+	}, 30_000);
 
-  it('installs own skills (skill-creator)', async () => {
-    await runCLI(['install', '--cli', 'claude'], sandbox)
+	// ─── Test: own skills are installed ──────────────────────────────────────
 
-    const skillCreator = path.join(sandbox, '.claude', 'skills', 'skill-creator', 'SKILL.md')
-    expect(await fs.pathExists(skillCreator)).toBe(true)
-  }, 30_000)
+	it("installs own skills (skill-creator)", async () => {
+		await runCLI(["install", "--cli", "claude"], sandbox);
 
-  // ─── Test: manifest records multiple CLIs ────────────────────────────────
+		const skillCreator = path.join(
+			sandbox,
+			".claude",
+			"skills",
+			"skill-creator",
+			"SKILL.md",
+		);
+		expect(await fs.pathExists(skillCreator)).toBe(true);
+	}, 30_000);
 
-  it('manifest records multiple CLIs when installed together', async () => {
-    await runCLI(['install', '--cli', 'claude,opencode'], sandbox)
+	// ─── Test: manifest records multiple CLIs ────────────────────────────────
 
-    const manifestPath = path.join(sandbox, '.javi-ai', 'manifest.json')
-    const manifest = await fs.readJSON(manifestPath)
-    expect(manifest.clis).toContain('claude')
-    expect(manifest.clis).toContain('opencode')
-  }, 30_000)
-})
+	it("manifest records multiple CLIs when installed together", async () => {
+		await runCLI(["install", "--cli", "claude,opencode"], sandbox);
+
+		const manifestPath = path.join(sandbox, ".javi-ai", "manifest.json");
+		const manifest = await fs.readJSON(manifestPath);
+		expect(manifest.clis).toContain("claude");
+		expect(manifest.clis).toContain("opencode");
+	}, 30_000);
+});

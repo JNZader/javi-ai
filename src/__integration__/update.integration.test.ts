@@ -1,112 +1,128 @@
 /**
  * Integration tests for runUpdate — re-installs from manifest.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import fs from 'fs-extra'
-import path from 'path'
 
-const { FIXED_ROOT, FIXED_HOME, FIXED_MANIFEST, FIXED_BACKUP, FIXED_CLAUDE_CONFIG, FIXED_CLAUDE_SKILLS } = vi.hoisted(() => {
-  const p = require('path')
-  const o = require('os')
-  const root = p.join(o.tmpdir(), `javi-ai-update-test-${Date.now()}`)
-  const home = p.join(root, 'home')
-  return {
-    FIXED_ROOT: root as string,
-    FIXED_HOME: home as string,
-    FIXED_MANIFEST: p.join(home, '.javi-ai', 'manifest.json') as string,
-    FIXED_BACKUP: p.join(home, '.javi-ai', 'backups') as string,
-    FIXED_CLAUDE_CONFIG: p.join(home, '.claude') as string,
-    FIXED_CLAUDE_SKILLS: p.join(home, '.claude', 'skills') as string,
-  }
-})
+import fs from "fs-extra";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('../constants.js', () => ({
-  HOME: FIXED_HOME,
-  CLI_OPTIONS: [{
-    id: 'claude', label: 'Claude Code',
-    configPath: FIXED_CLAUDE_CONFIG, skillsPath: FIXED_CLAUDE_SKILLS, available: true,
-  }],
-  MANIFEST_PATH: FIXED_MANIFEST,
-  BACKUP_DIR: FIXED_BACKUP,
-  MARKER_START: '<!-- BEGIN JAVI-AI -->',
-  MARKER_END: '<!-- END JAVI-AI -->',
-}))
+const {
+	FIXED_ROOT,
+	FIXED_HOME,
+	FIXED_MANIFEST,
+	FIXED_BACKUP,
+	FIXED_CLAUDE_CONFIG,
+	FIXED_CLAUDE_SKILLS,
+} = vi.hoisted(() => {
+	const p = require("path");
+	const o = require("os");
+	const root = p.join(o.tmpdir(), `javi-ai-update-test-${Date.now()}`);
+	const home = p.join(root, "home");
+	return {
+		FIXED_ROOT: root as string,
+		FIXED_HOME: home as string,
+		FIXED_MANIFEST: p.join(home, ".javi-ai", "manifest.json") as string,
+		FIXED_BACKUP: p.join(home, ".javi-ai", "backups") as string,
+		FIXED_CLAUDE_CONFIG: p.join(home, ".claude") as string,
+		FIXED_CLAUDE_SKILLS: p.join(home, ".claude", "skills") as string,
+	};
+});
 
-import { runUpdate } from '../commands/update.js'
-import type { InstallStep } from '../types/index.js'
+vi.mock("../constants.js", () => ({
+	HOME: FIXED_HOME,
+	CLI_OPTIONS: [
+		{
+			id: "claude",
+			label: "Claude Code",
+			configPath: FIXED_CLAUDE_CONFIG,
+			skillsPath: FIXED_CLAUDE_SKILLS,
+			pluginsPath: FIXED_CLAUDE_CONFIG + "/plugins",
+			available: true,
+		},
+	],
+	MANIFEST_PATH: FIXED_MANIFEST,
+	BACKUP_DIR: FIXED_BACKUP,
+	MARKER_START: "<!-- BEGIN JAVI-AI -->",
+	MARKER_END: "<!-- END JAVI-AI -->",
+}));
 
-describe('runUpdate() — integration', () => {
-  beforeEach(async () => {
-    await fs.ensureDir(FIXED_HOME)
-  })
+import { runUpdate } from "../commands/update.js";
+import type { InstallStep } from "../types/index.js";
 
-  afterEach(async () => {
-    await fs.remove(FIXED_ROOT)
-  })
+describe("runUpdate() — integration", () => {
+	beforeEach(async () => {
+		await fs.ensureDir(FIXED_HOME);
+	});
 
-  it('returns empty when no manifest/no CLIs installed', async () => {
-    const steps: InstallStep[] = []
-    const result = await runUpdate({}, (s) => { steps.push(s) })
+	afterEach(async () => {
+		await fs.remove(FIXED_ROOT);
+	});
 
-    expect(result.clis).toEqual([])
-    expect(result.steps).toEqual([])
-  })
+	it("returns empty when no manifest/no CLIs installed", async () => {
+		const steps: InstallStep[] = [];
+		const result = await runUpdate({}, (s) => {
+			steps.push(s);
+		});
 
-  it('re-installs for CLIs from manifest', async () => {
-    // Create manifest with claude
-    await fs.ensureDir(path.dirname(FIXED_MANIFEST))
-    await fs.writeJson(FIXED_MANIFEST, {
-      version: '1.0.0',
-      clis: ['claude'],
-      installedAt: '2026-03-20T00:00:00Z',
-      updatedAt: '2026-03-20T00:00:00Z',
-      skills: {},
-    })
+		expect(result.clis).toEqual([]);
+		expect(result.steps).toEqual([]);
+	});
 
-    const steps: InstallStep[] = []
-    const result = await runUpdate({}, (s) => {
-      const idx = steps.findIndex(x => x.id === s.id)
-      if (idx >= 0) steps[idx] = s
-      else steps.push(s)
-    })
+	it("re-installs for CLIs from manifest", async () => {
+		// Create manifest with claude
+		await fs.ensureDir(path.dirname(FIXED_MANIFEST));
+		await fs.writeJson(FIXED_MANIFEST, {
+			version: "1.0.0",
+			clis: ["claude"],
+			installedAt: "2026-03-20T00:00:00Z",
+			updatedAt: "2026-03-20T00:00:00Z",
+			skills: {},
+		});
 
-    expect(result.clis).toContain('claude')
-    // Should have attempted skills, configs, hooks, orchestrators
-    const doneSteps = steps.filter(s => s.status === 'done')
-    expect(doneSteps.length).toBeGreaterThanOrEqual(2)
-  })
+		const steps: InstallStep[] = [];
+		const result = await runUpdate({}, (s) => {
+			const idx = steps.findIndex((x) => x.id === s.id);
+			if (idx >= 0) steps[idx] = s;
+			else steps.push(s);
+		});
 
-  it('updates manifest timestamp after update', async () => {
-    await fs.ensureDir(path.dirname(FIXED_MANIFEST))
-    const oldDate = '2026-03-20T00:00:00Z'
-    await fs.writeJson(FIXED_MANIFEST, {
-      version: '1.0.0',
-      clis: ['claude'],
-      installedAt: oldDate,
-      updatedAt: oldDate,
-      skills: {},
-    })
+		expect(result.clis).toContain("claude");
+		// Should have attempted skills, configs, hooks, orchestrators
+		const doneSteps = steps.filter((s) => s.status === "done");
+		expect(doneSteps.length).toBeGreaterThanOrEqual(2);
+	});
 
-    await runUpdate({}, () => {})
+	it("updates manifest timestamp after update", async () => {
+		await fs.ensureDir(path.dirname(FIXED_MANIFEST));
+		const oldDate = "2026-03-20T00:00:00Z";
+		await fs.writeJson(FIXED_MANIFEST, {
+			version: "1.0.0",
+			clis: ["claude"],
+			installedAt: oldDate,
+			updatedAt: oldDate,
+			skills: {},
+		});
 
-    const manifest = await fs.readJson(FIXED_MANIFEST)
-    expect(manifest.updatedAt).not.toBe(oldDate)
-  })
+		await runUpdate({}, () => {});
 
-  it('dry-run does not modify manifest', async () => {
-    await fs.ensureDir(path.dirname(FIXED_MANIFEST))
-    const oldDate = '2026-03-20T00:00:00Z'
-    await fs.writeJson(FIXED_MANIFEST, {
-      version: '1.0.0',
-      clis: ['claude'],
-      installedAt: oldDate,
-      updatedAt: oldDate,
-      skills: {},
-    })
+		const manifest = await fs.readJson(FIXED_MANIFEST);
+		expect(manifest.updatedAt).not.toBe(oldDate);
+	});
 
-    await runUpdate({ dryRun: true }, () => {})
+	it("dry-run does not modify manifest", async () => {
+		await fs.ensureDir(path.dirname(FIXED_MANIFEST));
+		const oldDate = "2026-03-20T00:00:00Z";
+		await fs.writeJson(FIXED_MANIFEST, {
+			version: "1.0.0",
+			clis: ["claude"],
+			installedAt: oldDate,
+			updatedAt: oldDate,
+			skills: {},
+		});
 
-    const manifest = await fs.readJson(FIXED_MANIFEST)
-    expect(manifest.updatedAt).toBe(oldDate)
-  })
-})
+		await runUpdate({ dryRun: true }, () => {});
+
+		const manifest = await fs.readJson(FIXED_MANIFEST);
+		expect(manifest.updatedAt).toBe(oldDate);
+	});
+});

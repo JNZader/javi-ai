@@ -10,7 +10,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.tsx",
     "start": "node dist/index.js",
-    "lint": "eslint src/",
+    "lint": "biome check --diagnostic-level=error src/ --reporter=summary",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -42,6 +42,7 @@
     "react": "^19.2.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
     "@stryker-mutator/core": "^9.6.0",
     "@stryker-mutator/typescript-checker": "^9.6.0",
     "@stryker-mutator/vitest-runner": "^9.6.0",

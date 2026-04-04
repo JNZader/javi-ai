@@ -6,276 +6,416 @@
  * We use vi.hoisted() with require() to create a fixed path that is available
  * inside the vi.mock() factory (which is hoisted above all module-level code).
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import fs from 'fs-extra'
-import path from 'path'
-import os from 'os'
+
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // vi.hoisted() runs before vi.mock() factories — use require() to access built-ins
 const { FIXED_ASSETS_ROOT, FIXED_CLAUDE_DEST } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const p = require('path')
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const o = require('os')
-  return {
-    FIXED_ASSETS_ROOT: p.join(o.tmpdir(), 'javi-ai-skills-test-suite') as string,
-    FIXED_CLAUDE_DEST: p.join(o.tmpdir(), 'javi-ai-skills-claude-dest-test') as string,
-  }
-})
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const p = require("path");
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const o = require("os");
+	return {
+		FIXED_ASSETS_ROOT: p.join(
+			o.tmpdir(),
+			"javi-ai-skills-test-suite",
+		) as string,
+		FIXED_CLAUDE_DEST: p.join(
+			o.tmpdir(),
+			"javi-ai-skills-claude-dest-test",
+		) as string,
+	};
+});
 
-vi.mock('url', async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const nodePath = require('path')
-  const actual = await importOriginal<typeof import('url')>()
-  return {
-    ...actual,
-    fileURLToPath: (url: string | URL) => {
-      const urlStr = url.toString()
-      if (urlStr.includes('skills') && !urlStr.includes('skills.test')) {
-        // skills.ts: ASSETS_ROOT = path.resolve(__dirname, '../../')
-        // return FIXED_ASSETS_ROOT/src/installer/skills.js
-        // __dirname = FIXED_ASSETS_ROOT/src/installer
-        // path.resolve(FIXED_ASSETS_ROOT/src/installer, '../../') = FIXED_ASSETS_ROOT ✓
-        return nodePath.join(FIXED_ASSETS_ROOT, 'src', 'installer', 'skills.js')
-      }
-      return actual.fileURLToPath(url)
-    },
-  }
-})
+vi.mock("url", async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const nodePath = require("path");
+	const actual = await importOriginal<typeof import("url")>();
+	return {
+		...actual,
+		fileURLToPath: (url: string | URL) => {
+			const urlStr = url.toString();
+			if (urlStr.includes("skills") && !urlStr.includes("skills.test")) {
+				// skills.ts: ASSETS_ROOT = path.resolve(__dirname, '../../')
+				// return FIXED_ASSETS_ROOT/src/installer/skills.js
+				// __dirname = FIXED_ASSETS_ROOT/src/installer
+				// path.resolve(FIXED_ASSETS_ROOT/src/installer, '../../') = FIXED_ASSETS_ROOT ✓
+				return nodePath.join(
+					FIXED_ASSETS_ROOT,
+					"src",
+					"installer",
+					"skills.js",
+				);
+			}
+			return actual.fileURLToPath(url);
+		},
+	};
+});
 
-vi.mock('../constants.js', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const nodePath = require('path')
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const nodeOs = require('os')
-  return {
-    CLI_OPTIONS: [
-      {
-        id: 'claude',
-        label: 'Claude Code',
-        configPath: nodePath.join(nodeOs.homedir(), '.claude'),
-        skillsPath: FIXED_CLAUDE_DEST,
-        available: true,
-      },
-    ],
-    MANIFEST_PATH: nodePath.join(nodeOs.tmpdir(), 'javi-ai-skills-manifest-test.json'),
-    BACKUP_DIR: nodePath.join(nodeOs.tmpdir(), 'javi-ai-skills-backups-test'),
-    MARKER_START: '<!-- BEGIN JAVI-AI -->',
-    MARKER_END: '<!-- END JAVI-AI -->',
-    HOME: nodeOs.homedir(),
-  }
-})
+vi.mock("../constants.js", () => {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const nodePath = require("path");
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const nodeOs = require("os");
+	return {
+		CLI_OPTIONS: [
+			{
+				id: "claude",
+				label: "Claude Code",
+				configPath: nodePath.join(nodeOs.homedir(), ".claude"),
+				skillsPath: FIXED_CLAUDE_DEST,
+				pluginsPath: nodePath.join(
+					nodeOs.tmpdir(),
+					"javi-ai-skills-plugins-dest-test",
+				),
+				available: true,
+			},
+		],
+		MANIFEST_PATH: nodePath.join(
+			nodeOs.tmpdir(),
+			"javi-ai-skills-manifest-test.json",
+		),
+		BACKUP_DIR: nodePath.join(nodeOs.tmpdir(), "javi-ai-skills-backups-test"),
+		MARKER_START: "<!-- BEGIN JAVI-AI -->",
+		MARKER_END: "<!-- END JAVI-AI -->",
+		HOME: nodeOs.homedir(),
+	};
+});
 
-import { installSkillsForCLI } from './skills.js'
+import { installSkillsForCLI } from "./skills.js";
 
 async function createAssetTree(): Promise<void> {
-  await fs.remove(FIXED_ASSETS_ROOT)
+	await fs.remove(FIXED_ASSETS_ROOT);
 
-  // ATL upstream skills
-  const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
+	// ATL upstream skills
+	const atlSkills = path.join(
+		FIXED_ASSETS_ROOT,
+		"upstream",
+		"agent-teams-lite",
+		"skills",
+	);
 
-  await fs.ensureDir(path.join(atlSkills, 'sdd-explore'))
-  await fs.writeFile(path.join(atlSkills, 'sdd-explore', 'SKILL.md'), '# SDD Explore', 'utf-8')
+	await fs.ensureDir(path.join(atlSkills, "sdd-explore"));
+	await fs.writeFile(
+		path.join(atlSkills, "sdd-explore", "SKILL.md"),
+		"# SDD Explore",
+		"utf-8",
+	);
 
-  await fs.ensureDir(path.join(atlSkills, 'sdd-apply'))
-  await fs.writeFile(path.join(atlSkills, 'sdd-apply', 'SKILL.md'), '# SDD Apply', 'utf-8')
+	await fs.ensureDir(path.join(atlSkills, "sdd-apply"));
+	await fs.writeFile(
+		path.join(atlSkills, "sdd-apply", "SKILL.md"),
+		"# SDD Apply",
+		"utf-8",
+	);
 
-  await fs.ensureDir(path.join(atlSkills, '_shared'))
-  await fs.writeFile(path.join(atlSkills, '_shared', 'persistence-contract.md'), '# Shared', 'utf-8')
+	await fs.ensureDir(path.join(atlSkills, "_shared"));
+	await fs.writeFile(
+		path.join(atlSkills, "_shared", "persistence-contract.md"),
+		"# Shared",
+		"utf-8",
+	);
 
-  await fs.ensureDir(path.join(atlSkills, '.dotfile'))
-  await fs.writeFile(path.join(atlSkills, '.dotfile', 'SKILL.md'), '# Dotfile', 'utf-8')
+	await fs.ensureDir(path.join(atlSkills, ".dotfile"));
+	await fs.writeFile(
+		path.join(atlSkills, ".dotfile", "SKILL.md"),
+		"# Dotfile",
+		"utf-8",
+	);
 
-  await fs.ensureDir(path.join(atlSkills, 'no-skill-dir'))
-  await fs.writeFile(path.join(atlSkills, 'no-skill-dir', 'README.md'), '# No skill', 'utf-8')
+	await fs.ensureDir(path.join(atlSkills, "no-skill-dir"));
+	await fs.writeFile(
+		path.join(atlSkills, "no-skill-dir", "README.md"),
+		"# No skill",
+		"utf-8",
+	);
 
-  // Gentleman-Skills curated
-  const gsSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'gentleman-skills', 'curated')
+	// Gentleman-Skills curated
+	const gsSkills = path.join(
+		FIXED_ASSETS_ROOT,
+		"upstream",
+		"gentleman-skills",
+		"curated",
+	);
 
-  await fs.ensureDir(path.join(gsSkills, 'react-19'))
-  await fs.writeFile(path.join(gsSkills, 'react-19', 'SKILL.md'), '# React 19 Skill', 'utf-8')
+	await fs.ensureDir(path.join(gsSkills, "react-19"));
+	await fs.writeFile(
+		path.join(gsSkills, "react-19", "SKILL.md"),
+		"# React 19 Skill",
+		"utf-8",
+	);
 
-  await fs.ensureDir(path.join(gsSkills, 'typescript'))
-  await fs.writeFile(path.join(gsSkills, 'typescript', 'SKILL.md'), '# TypeScript Skill', 'utf-8')
+	await fs.ensureDir(path.join(gsSkills, "typescript"));
+	await fs.writeFile(
+		path.join(gsSkills, "typescript", "SKILL.md"),
+		"# TypeScript Skill",
+		"utf-8",
+	);
 
-  // Delta extensions (appended to upstream skills)
-  const deltaExt = path.join(FIXED_ASSETS_ROOT, 'delta', 'extensions')
-  await fs.ensureDir(path.join(deltaExt, 'sdd-explore'))
-  await fs.writeFile(path.join(deltaExt, 'sdd-explore', 'EXTENSION.md'), '## Extension: Perspective', 'utf-8')
+	// Delta extensions (appended to upstream skills)
+	const deltaExt = path.join(FIXED_ASSETS_ROOT, "delta", "extensions");
+	await fs.ensureDir(path.join(deltaExt, "sdd-explore"));
+	await fs.writeFile(
+		path.join(deltaExt, "sdd-explore", "EXTENSION.md"),
+		"## Extension: Perspective",
+		"utf-8",
+	);
 
-  // Delta overrides (replaces upstream SKILL.md)
-  const deltaOver = path.join(FIXED_ASSETS_ROOT, 'delta', 'overrides')
-  await fs.ensureDir(path.join(deltaOver, 'sdd-apply'))
-  await fs.writeFile(path.join(deltaOver, 'sdd-apply', 'SKILL.md'), '# SDD Apply Override', 'utf-8')
+	// Delta overrides (replaces upstream SKILL.md)
+	const deltaOver = path.join(FIXED_ASSETS_ROOT, "delta", "overrides");
+	await fs.ensureDir(path.join(deltaOver, "sdd-apply"));
+	await fs.writeFile(
+		path.join(deltaOver, "sdd-apply", "SKILL.md"),
+		"# SDD Apply Override",
+		"utf-8",
+	);
 
-  // Own skills
-  const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
-  await fs.ensureDir(path.join(ownSkills, 'skill-creator'))
-  await fs.writeFile(path.join(ownSkills, 'skill-creator', 'SKILL.md'), '# Skill Creator', 'utf-8')
-  await fs.ensureDir(path.join(ownSkills, 'obsidian-braindump'))
-  await fs.writeFile(path.join(ownSkills, 'obsidian-braindump', 'SKILL.md'), '# Obsidian', 'utf-8')
+	// Own skills
+	const ownSkills = path.join(FIXED_ASSETS_ROOT, "own", "skills");
+	await fs.ensureDir(path.join(ownSkills, "skill-creator"));
+	await fs.writeFile(
+		path.join(ownSkills, "skill-creator", "SKILL.md"),
+		"# Skill Creator",
+		"utf-8",
+	);
+	await fs.ensureDir(path.join(ownSkills, "obsidian-braindump"));
+	await fs.writeFile(
+		path.join(ownSkills, "obsidian-braindump", "SKILL.md"),
+		"# Obsidian",
+		"utf-8",
+	);
 }
 
-describe('installSkillsForCLI', () => {
-  beforeEach(async () => {
-    await createAssetTree()
-    await fs.remove(FIXED_CLAUDE_DEST)
-  })
+describe("installSkillsForCLI", () => {
+	beforeEach(async () => {
+		await createAssetTree();
+		await fs.remove(FIXED_CLAUDE_DEST);
+	});
 
-  afterEach(async () => {
-    await fs.remove(FIXED_CLAUDE_DEST)
-  })
+	afterEach(async () => {
+		await fs.remove(FIXED_CLAUDE_DEST);
+	});
 
-  it('returns [] for unknown cli', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await installSkillsForCLI('unknown' as any, true)
-    expect(result).toEqual([])
-  })
+	it("returns [] for unknown cli", async () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await installSkillsForCLI("unknown" as any, true);
+		expect(result).toEqual([]);
+	});
 
-  it('dryRun: returns correct skill names without creating files', async () => {
-    const result = await installSkillsForCLI('claude', true)
+	it("dryRun: returns correct skill names without creating files", async () => {
+		const result = await installSkillsForCLI("claude", true);
 
-    // ATL skills
-    expect(result).toContain('sdd-explore')
-    expect(result).toContain('sdd-apply')
-    // Gentleman-Skills curated
-    expect(result).toContain('react-19')
-    expect(result).toContain('typescript')
-    // Shared + own
-    expect(result).toContain('_shared')
-    expect(result).toContain('skill-creator')
-    expect(result).toContain('obsidian-braindump')
+		// ATL skills
+		expect(result).toContain("sdd-explore");
+		expect(result).toContain("sdd-apply");
+		// Gentleman-Skills curated
+		expect(result).toContain("react-19");
+		expect(result).toContain("typescript");
+		// Shared + own
+		expect(result).toContain("_shared");
+		expect(result).toContain("skill-creator");
+		expect(result).toContain("obsidian-braindump");
 
-    expect(await fs.pathExists(FIXED_CLAUDE_DEST)).toBe(false)
-  })
+		expect(await fs.pathExists(FIXED_CLAUDE_DEST)).toBe(false);
+	});
 
-  it('dryRun: does not include dotfile directories', async () => {
-    const result = await installSkillsForCLI('claude', true)
-    expect(result).not.toContain('.dotfile')
-  })
+	it("dryRun: does not include dotfile directories", async () => {
+		const result = await installSkillsForCLI("claude", true);
+		expect(result).not.toContain(".dotfile");
+	});
 
-  it('dryRun: includes multi-file skills without SKILL.md (e.g. angular)', async () => {
-    const result = await installSkillsForCLI('claude', true)
-    // no-skill-dir is now included as a multi-file skill (full directory copy)
-    expect(result).toContain('no-skill-dir')
-  })
+	it("dryRun: includes multi-file skills without SKILL.md (e.g. angular)", async () => {
+		const result = await installSkillsForCLI("claude", true);
+		// no-skill-dir is now included as a multi-file skill (full directory copy)
+		expect(result).toContain("no-skill-dir");
+	});
 
-  it('installs upstream skill without EXTENSION.md (content exact match)', async () => {
-    await installSkillsForCLI('claude', false)
-    const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, 'react-19', 'SKILL.md'), 'utf-8')
-    expect(content).toBe('# React 19 Skill')
-  })
+	it("installs upstream skill without EXTENSION.md (content exact match)", async () => {
+		await installSkillsForCLI("claude", false);
+		const content = await fs.readFile(
+			path.join(FIXED_CLAUDE_DEST, "react-19", "SKILL.md"),
+			"utf-8",
+		);
+		expect(content).toBe("# React 19 Skill");
+	});
 
-  it('installs upstream skill WITH delta extension: content = SKILL.md + separator + EXTENSION.md', async () => {
-    await installSkillsForCLI('claude', false)
-    const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'SKILL.md'), 'utf-8')
-    expect(content).toBe('# SDD Explore\n\n---\n\n## Extension: Perspective')
-  })
+	it("installs upstream skill WITH delta extension: content = SKILL.md + separator + EXTENSION.md", async () => {
+		await installSkillsForCLI("claude", false);
+		const content = await fs.readFile(
+			path.join(FIXED_CLAUDE_DEST, "sdd-explore", "SKILL.md"),
+			"utf-8",
+		);
+		expect(content).toBe("# SDD Explore\n\n---\n\n## Extension: Perspective");
+	});
 
-  it('installs upstream skill WITH delta override: uses override SKILL.md', async () => {
-    await installSkillsForCLI('claude', false)
-    const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, 'sdd-apply', 'SKILL.md'), 'utf-8')
-    expect(content).toBe('# SDD Apply Override')
-  })
+	it("installs upstream skill WITH delta override: uses override SKILL.md", async () => {
+		await installSkillsForCLI("claude", false);
+		const content = await fs.readFile(
+			path.join(FIXED_CLAUDE_DEST, "sdd-apply", "SKILL.md"),
+			"utf-8",
+		);
+		expect(content).toBe("# SDD Apply Override");
+	});
 
-  it('skips dotfile directories', async () => {
-    await installSkillsForCLI('claude', false)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '.dotfile'))).toBe(false)
-  })
+	it("skips dotfile directories", async () => {
+		await installSkillsForCLI("claude", false);
+		expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, ".dotfile"))).toBe(
+			false,
+		);
+	});
 
-  it('copies _shared from ATL upstream', async () => {
-    await installSkillsForCLI('claude', false)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '_shared'))).toBe(true)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, '_shared', 'persistence-contract.md'))).toBe(true)
-  })
+	it("copies _shared from ATL upstream", async () => {
+		await installSkillsForCLI("claude", false);
+		expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, "_shared"))).toBe(
+			true,
+		);
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "_shared", "persistence-contract.md"),
+			),
+		).toBe(true);
+	});
 
-  it('copies _shared directory with overwrite', async () => {
-    await installSkillsForCLI('claude', false)
-    await fs.writeFile(path.join(FIXED_CLAUDE_DEST, '_shared', 'persistence-contract.md'), 'Modified', 'utf-8')
-    await installSkillsForCLI('claude', false)
-    const content = await fs.readFile(path.join(FIXED_CLAUDE_DEST, '_shared', 'persistence-contract.md'), 'utf-8')
-    expect(content).toBe('# Shared')
-  })
+	it("copies _shared directory with overwrite", async () => {
+		await installSkillsForCLI("claude", false);
+		await fs.writeFile(
+			path.join(FIXED_CLAUDE_DEST, "_shared", "persistence-contract.md"),
+			"Modified",
+			"utf-8",
+		);
+		await installSkillsForCLI("claude", false);
+		const content = await fs.readFile(
+			path.join(FIXED_CLAUDE_DEST, "_shared", "persistence-contract.md"),
+			"utf-8",
+		);
+		expect(content).toBe("# Shared");
+	});
 
-  it('installs own skills', async () => {
-    await installSkillsForCLI('claude', false)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'skill-creator', 'SKILL.md'))).toBe(true)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'obsidian-braindump', 'SKILL.md'))).toBe(true)
-  })
+	it("installs own skills", async () => {
+		await installSkillsForCLI("claude", false);
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "skill-creator", "SKILL.md"),
+			),
+		).toBe(true);
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "obsidian-braindump", "SKILL.md"),
+			),
+		).toBe(true);
+	});
 
-  it('handles missing own/skills directory gracefully (no error)', async () => {
-    await fs.remove(path.join(FIXED_ASSETS_ROOT, 'own', 'skills'))
-    await expect(installSkillsForCLI('claude', false)).resolves.toBeDefined()
-  })
+	it("handles missing own/skills directory gracefully (no error)", async () => {
+		await fs.remove(path.join(FIXED_ASSETS_ROOT, "own", "skills"));
+		await expect(installSkillsForCLI("claude", false)).resolves.toBeDefined();
+	});
 
-  it('handles missing upstream directories gracefully (installs own only)', async () => {
-    await fs.remove(path.join(FIXED_ASSETS_ROOT, 'upstream'))
-    const result = await installSkillsForCLI('claude', false)
-    // Should still install own skills even without upstream
-    expect(result).toContain('skill-creator')
-    expect(result).toContain('obsidian-braindump')
-  })
+	it("handles missing upstream directories gracefully (installs own only)", async () => {
+		await fs.remove(path.join(FIXED_ASSETS_ROOT, "upstream"));
+		const result = await installSkillsForCLI("claude", false);
+		// Should still install own skills even without upstream
+		expect(result).toContain("skill-creator");
+		expect(result).toContain("obsidian-braindump");
+	});
 
-  // ── references/ subdirectory support ──────────────────────────────────
+	// ── references/ subdirectory support ──────────────────────────────────
 
-  it('copies references/ subdirectory for upstream skills that have one', async () => {
-    // Add references/ to an existing upstream skill
-    const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
-    const refsDir = path.join(atlSkills, 'sdd-explore', 'references')
-    await fs.ensureDir(refsDir)
-    await fs.writeFile(path.join(refsDir, 'patterns.md'), '# Patterns Reference', 'utf-8')
-    await fs.writeFile(path.join(refsDir, 'examples.md'), '# Examples Reference', 'utf-8')
+	it("copies references/ subdirectory for upstream skills that have one", async () => {
+		// Add references/ to an existing upstream skill
+		const atlSkills = path.join(
+			FIXED_ASSETS_ROOT,
+			"upstream",
+			"agent-teams-lite",
+			"skills",
+		);
+		const refsDir = path.join(atlSkills, "sdd-explore", "references");
+		await fs.ensureDir(refsDir);
+		await fs.writeFile(
+			path.join(refsDir, "patterns.md"),
+			"# Patterns Reference",
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(refsDir, "examples.md"),
+			"# Examples Reference",
+			"utf-8",
+		);
 
-    await installSkillsForCLI('claude', false)
+		await installSkillsForCLI("claude", false);
 
-    // references/ should be copied to destination
-    const destRefs = path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'references')
-    expect(await fs.pathExists(destRefs)).toBe(true)
-    expect(await fs.pathExists(path.join(destRefs, 'patterns.md'))).toBe(true)
-    expect(await fs.pathExists(path.join(destRefs, 'examples.md'))).toBe(true)
+		// references/ should be copied to destination
+		const destRefs = path.join(FIXED_CLAUDE_DEST, "sdd-explore", "references");
+		expect(await fs.pathExists(destRefs)).toBe(true);
+		expect(await fs.pathExists(path.join(destRefs, "patterns.md"))).toBe(true);
+		expect(await fs.pathExists(path.join(destRefs, "examples.md"))).toBe(true);
 
-    const content = await fs.readFile(path.join(destRefs, 'patterns.md'), 'utf-8')
-    expect(content).toBe('# Patterns Reference')
-  })
+		const content = await fs.readFile(
+			path.join(destRefs, "patterns.md"),
+			"utf-8",
+		);
+		expect(content).toBe("# Patterns Reference");
+	});
 
-  it('does not fail when upstream skill has no references/ directory', async () => {
-    await installSkillsForCLI('claude', false)
+	it("does not fail when upstream skill has no references/ directory", async () => {
+		await installSkillsForCLI("claude", false);
 
-    // react-19 has no references/ — should install normally without error
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'react-19', 'SKILL.md'))).toBe(true)
-    expect(await fs.pathExists(path.join(FIXED_CLAUDE_DEST, 'react-19', 'references'))).toBe(false)
-  })
+		// react-19 has no references/ — should install normally without error
+		expect(
+			await fs.pathExists(path.join(FIXED_CLAUDE_DEST, "react-19", "SKILL.md")),
+		).toBe(true);
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "react-19", "references"),
+			),
+		).toBe(false);
+	});
 
-  it('copies references/ from own skills via full directory copy', async () => {
-    // Own skills use fs.copy for entire directory, so references/ comes free
-    const ownSkills = path.join(FIXED_ASSETS_ROOT, 'own', 'skills')
-    const refsDir = path.join(ownSkills, 'skill-creator', 'references')
-    await fs.ensureDir(refsDir)
-    await fs.writeFile(path.join(refsDir, 'spec.md'), '# Skill Spec', 'utf-8')
+	it("copies references/ from own skills via full directory copy", async () => {
+		// Own skills use fs.copy for entire directory, so references/ comes free
+		const ownSkills = path.join(FIXED_ASSETS_ROOT, "own", "skills");
+		const refsDir = path.join(ownSkills, "skill-creator", "references");
+		await fs.ensureDir(refsDir);
+		await fs.writeFile(path.join(refsDir, "spec.md"), "# Skill Spec", "utf-8");
 
-    await installSkillsForCLI('claude', false)
+		await installSkillsForCLI("claude", false);
 
-    const destRefs = path.join(FIXED_CLAUDE_DEST, 'skill-creator', 'references')
-    expect(await fs.pathExists(destRefs)).toBe(true)
-    expect(await fs.readFile(path.join(destRefs, 'spec.md'), 'utf-8')).toBe('# Skill Spec')
-  })
+		const destRefs = path.join(
+			FIXED_CLAUDE_DEST,
+			"skill-creator",
+			"references",
+		);
+		expect(await fs.pathExists(destRefs)).toBe(true);
+		expect(await fs.readFile(path.join(destRefs, "spec.md"), "utf-8")).toBe(
+			"# Skill Spec",
+		);
+	});
 
-  it('overwrites stale references/ on reinstall', async () => {
-    const atlSkills = path.join(FIXED_ASSETS_ROOT, 'upstream', 'agent-teams-lite', 'skills')
-    const refsDir = path.join(atlSkills, 'sdd-explore', 'references')
-    await fs.ensureDir(refsDir)
-    await fs.writeFile(path.join(refsDir, 'old.md'), '# Old', 'utf-8')
+	it("overwrites stale references/ on reinstall", async () => {
+		const atlSkills = path.join(
+			FIXED_ASSETS_ROOT,
+			"upstream",
+			"agent-teams-lite",
+			"skills",
+		);
+		const refsDir = path.join(atlSkills, "sdd-explore", "references");
+		await fs.ensureDir(refsDir);
+		await fs.writeFile(path.join(refsDir, "old.md"), "# Old", "utf-8");
 
-    await installSkillsForCLI('claude', false)
+		await installSkillsForCLI("claude", false);
 
-    // Update the source references
-    await fs.writeFile(path.join(refsDir, 'old.md'), '# Updated', 'utf-8')
-    await fs.writeFile(path.join(refsDir, 'new.md'), '# New', 'utf-8')
+		// Update the source references
+		await fs.writeFile(path.join(refsDir, "old.md"), "# Updated", "utf-8");
+		await fs.writeFile(path.join(refsDir, "new.md"), "# New", "utf-8");
 
-    await installSkillsForCLI('claude', false)
+		await installSkillsForCLI("claude", false);
 
-    const destRefs = path.join(FIXED_CLAUDE_DEST, 'sdd-explore', 'references')
-    expect(await fs.readFile(path.join(destRefs, 'old.md'), 'utf-8')).toBe('# Updated')
-    expect(await fs.pathExists(path.join(destRefs, 'new.md'))).toBe(true)
-  })
-})
+		const destRefs = path.join(FIXED_CLAUDE_DEST, "sdd-explore", "references");
+		expect(await fs.readFile(path.join(destRefs, "old.md"), "utf-8")).toBe(
+			"# Updated",
+		);
+		expect(await fs.pathExists(path.join(destRefs, "new.md"))).toBe(true);
+	});
+});

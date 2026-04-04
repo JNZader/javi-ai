@@ -1,20 +1,26 @@
-import fs from 'fs-extra'
-import path from 'path'
-import type { SyncOptions, SyncStep, MarkdownEntry } from '../types/index.js'
-import { parseFrontmatter } from '../lib/frontmatter.js'
+import fs from "fs-extra";
+import path from "path";
 import {
-  AI_CONFIG_DIR_NAME,
-  AI_CLI_CONFIG_FILES,
-  SYNC_TARGETS,
-  MARKER_START,
-  MARKER_END,
-} from '../constants.js'
+	AI_CLI_CONFIG_FILES,
+	AI_CONFIG_DIR_NAME,
+	MARKER_END,
+	MARKER_START,
+	SYNC_TARGETS,
+} from "../constants.js";
+import { parseFrontmatter } from "../lib/frontmatter.js";
+import type { MarkdownEntry, SyncOptions, SyncStep } from "../types/index.js";
 
-type SyncTarget = typeof SYNC_TARGETS[number]
-type StepCallback = (step: SyncStep) => void
+type SyncTarget = (typeof SYNC_TARGETS)[number];
+type StepCallback = (step: SyncStep) => void;
 
-function report(onStep: StepCallback, id: string, label: string, status: SyncStep['status'], detail?: string) {
-  onStep({ id, label, status, detail })
+function report(
+	onStep: StepCallback,
+	id: string,
+	label: string,
+	status: SyncStep["status"],
+	detail?: string,
+) {
+	onStep({ id, label, status, detail });
 }
 
 // ---------------------------------------------------------------------------
@@ -26,19 +32,19 @@ function report(onStep: StepCallback, id: string, label: string, status: SyncSte
  * Returns the absolute path to .ai-config/ or null if not found.
  */
 export async function findConfigDir(startDir: string): Promise<string | null> {
-  let current = path.resolve(startDir)
-  const root = path.parse(current).root
+	let current = path.resolve(startDir);
+	const root = path.parse(current).root;
 
-  while (true) {
-    const candidate = path.join(current, AI_CONFIG_DIR_NAME)
-    if (await fs.pathExists(candidate)) {
-      const stat = await fs.stat(candidate)
-      if (stat.isDirectory()) return candidate
-    }
-    if (current === root) break
-    current = path.dirname(current)
-  }
-  return null
+	while (true) {
+		const candidate = path.join(current, AI_CONFIG_DIR_NAME);
+		if (await fs.pathExists(candidate)) {
+			const stat = await fs.stat(candidate);
+			if (stat.isDirectory()) return candidate;
+		}
+		if (current === root) break;
+		current = path.dirname(current);
+	}
+	return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,79 +52,90 @@ export async function findConfigDir(startDir: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 interface IgnoreRules {
-  globalExcludes: Set<string>
-  targetExcludes: Map<string, Set<string>>
+	globalExcludes: Set<string>;
+	targetExcludes: Map<string, Set<string>>;
 }
 
 async function loadSkillIgnore(configDir: string): Promise<IgnoreRules> {
-  const globalExcludes = new Set<string>()
-  const targetExcludes = new Map<string, Set<string>>()
+	const globalExcludes = new Set<string>();
+	const targetExcludes = new Map<string, Set<string>>();
 
-  const ignorePath = path.join(configDir, '.skillignore')
-  if (!await fs.pathExists(ignorePath)) {
-    return { globalExcludes, targetExcludes }
-  }
+	const ignorePath = path.join(configDir, ".skillignore");
+	if (!(await fs.pathExists(ignorePath))) {
+		return { globalExcludes, targetExcludes };
+	}
 
-  const content = await fs.readFile(ignorePath, 'utf-8')
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
+	const content = await fs.readFile(ignorePath, "utf-8");
+	for (const rawLine of content.split("\n")) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
 
-    if (line.includes(':')) {
-      const [target, skill] = line.split(':', 2)
-      if (target && skill) {
-        if (!targetExcludes.has(target)) targetExcludes.set(target, new Set())
-        targetExcludes.get(target)!.add(skill)
-      }
-    } else {
-      globalExcludes.add(line)
-    }
-  }
+		if (line.includes(":")) {
+			const [target, skill] = line.split(":", 2);
+			if (target && skill) {
+				if (!targetExcludes.has(target)) targetExcludes.set(target, new Set());
+				targetExcludes.get(target)!.add(skill);
+			}
+		} else {
+			globalExcludes.add(line);
+		}
+	}
 
-  return { globalExcludes, targetExcludes }
+	return { globalExcludes, targetExcludes };
 }
 
-function isExcluded(entry: MarkdownEntry, globalExcludes: Set<string>, cliExcludes: Set<string>): boolean {
-  const nameKey = entry.name
-  const relKey = entry.relativePath.replace(/\.md$/, '').replace(/\/SKILL\.md$/, '')
-  return globalExcludes.has(nameKey)
-    || globalExcludes.has(relKey)
-    || cliExcludes.has(nameKey)
-    || cliExcludes.has(relKey)
+function isExcluded(
+	entry: MarkdownEntry,
+	globalExcludes: Set<string>,
+	cliExcludes: Set<string>,
+): boolean {
+	const nameKey = entry.name;
+	const relKey = entry.relativePath
+		.replace(/\.md$/, "")
+		.replace(/\/SKILL\.md$/, "");
+	return (
+		globalExcludes.has(nameKey) ||
+		globalExcludes.has(relKey) ||
+		cliExcludes.has(nameKey) ||
+		cliExcludes.has(relKey)
+	);
 }
 
 // ---------------------------------------------------------------------------
 // Collect markdown entries
 // ---------------------------------------------------------------------------
 
-async function collectMarkdownEntries(baseDir: string, prefix = ''): Promise<MarkdownEntry[]> {
-  const entries: MarkdownEntry[] = []
-  if (!await fs.pathExists(baseDir)) return entries
+async function collectMarkdownEntries(
+	baseDir: string,
+	prefix = "",
+): Promise<MarkdownEntry[]> {
+	const entries: MarkdownEntry[] = [];
+	if (!(await fs.pathExists(baseDir))) return entries;
 
-  const items = await fs.readdir(baseDir, { withFileTypes: true })
-  for (const item of items) {
-    if (item.name.startsWith('_') || item.name.startsWith('.')) continue
+	const items = await fs.readdir(baseDir, { withFileTypes: true });
+	for (const item of items) {
+		if (item.name.startsWith("_") || item.name.startsWith(".")) continue;
 
-    const itemPath = path.join(baseDir, item.name)
-    const relPath = prefix ? `${prefix}/${item.name}` : item.name
+		const itemPath = path.join(baseDir, item.name);
+		const relPath = prefix ? `${prefix}/${item.name}` : item.name;
 
-    if (item.isDirectory()) {
-      const skillMd = path.join(itemPath, 'SKILL.md')
-      if (await fs.pathExists(skillMd)) {
-        const content = await fs.readFile(skillMd, 'utf-8')
-        entries.push({ relativePath: relPath, name: item.name, content })
-      } else {
-        const subEntries = await collectMarkdownEntries(itemPath, relPath)
-        entries.push(...subEntries)
-      }
-    } else if (item.name.endsWith('.md') && item.name !== 'README.md') {
-      const content = await fs.readFile(itemPath, 'utf-8')
-      const name = item.name.replace('.md', '')
-      entries.push({ relativePath: relPath, name, content })
-    }
-  }
+		if (item.isDirectory()) {
+			const skillMd = path.join(itemPath, "SKILL.md");
+			if (await fs.pathExists(skillMd)) {
+				const content = await fs.readFile(skillMd, "utf-8");
+				entries.push({ relativePath: relPath, name: item.name, content });
+			} else {
+				const subEntries = await collectMarkdownEntries(itemPath, relPath);
+				entries.push(...subEntries);
+			}
+		} else if (item.name.endsWith(".md") && item.name !== "README.md") {
+			const content = await fs.readFile(itemPath, "utf-8");
+			const name = item.name.replace(".md", "");
+			entries.push({ relativePath: relPath, name, content });
+		}
+	}
 
-  return entries
+	return entries;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,91 +143,98 @@ async function collectMarkdownEntries(baseDir: string, prefix = ''): Promise<Mar
 // ---------------------------------------------------------------------------
 
 function buildConfigContent(
-  target: string,
-  agents: MarkdownEntry[],
-  skills: MarkdownEntry[],
+	target: string,
+	agents: MarkdownEntry[],
+	skills: MarkdownEntry[],
 ): string {
-  const lines: string[] = []
+	const lines: string[] = [];
 
-  lines.push(`# AI Configuration for ${target}`)
-  lines.push('')
-  lines.push('Auto-generated by javi-ai sync. Do not edit between markers.')
-  lines.push('')
+	lines.push(`# AI Configuration for ${target}`);
+	lines.push("");
+	lines.push("Auto-generated by javi-ai sync. Do not edit between markers.");
+	lines.push("");
 
-  if (agents.length > 0) {
-    lines.push('## Agents')
-    lines.push('')
+	if (agents.length > 0) {
+		lines.push("## Agents");
+		lines.push("");
 
-    // Group agents by category (first path segment)
-    const grouped = new Map<string, MarkdownEntry[]>()
-    for (const agent of agents) {
-      const parts = agent.relativePath.split('/')
-      const category = parts.length > 1 ? parts[0]! : 'general'
-      if (!grouped.has(category)) grouped.set(category, [])
-      grouped.get(category)!.push(agent)
-    }
+		// Group agents by category (first path segment)
+		const grouped = new Map<string, MarkdownEntry[]>();
+		for (const agent of agents) {
+			const parts = agent.relativePath.split("/");
+			const category = parts.length > 1 ? parts[0]! : "general";
+			if (!grouped.has(category)) grouped.set(category, []);
+			grouped.get(category)!.push(agent);
+		}
 
-    for (const [category, catAgents] of grouped) {
-      if (grouped.size > 1) {
-        lines.push(`### ${category}`)
-        lines.push('')
-      }
-      for (const agent of catAgents) {
-        const fm = parseFrontmatter(agent.content)
-        const name = fm?.data['name'] ?? agent.name
-        const desc = fm?.data['description'] ?? ''
-        lines.push(desc ? `- **${name}**: ${desc}` : `- **${name}**`)
-      }
-      lines.push('')
-    }
-  }
+		for (const [category, catAgents] of grouped) {
+			if (grouped.size > 1) {
+				lines.push(`### ${category}`);
+				lines.push("");
+			}
+			for (const agent of catAgents) {
+				const fm = parseFrontmatter(agent.content);
+				const name = fm?.data["name"] ?? agent.name;
+				const desc = fm?.data["description"] ?? "";
+				lines.push(desc ? `- **${name}**: ${desc}` : `- **${name}**`);
+			}
+			lines.push("");
+		}
+	}
 
-  if (skills.length > 0) {
-    lines.push('## Available Skills')
-    lines.push('')
+	if (skills.length > 0) {
+		lines.push("## Available Skills");
+		lines.push("");
 
-    // Group skills by category (first path segment)
-    const grouped = new Map<string, MarkdownEntry[]>()
-    for (const skill of skills) {
-      const parts = skill.relativePath.split('/')
-      const category = parts.length > 1 ? parts[0]! : 'general'
-      if (!grouped.has(category)) grouped.set(category, [])
-      grouped.get(category)!.push(skill)
-    }
+		// Group skills by category (first path segment)
+		const grouped = new Map<string, MarkdownEntry[]>();
+		for (const skill of skills) {
+			const parts = skill.relativePath.split("/");
+			const category = parts.length > 1 ? parts[0]! : "general";
+			if (!grouped.has(category)) grouped.set(category, []);
+			grouped.get(category)!.push(skill);
+		}
 
-    for (const [category, catSkills] of grouped) {
-      if (grouped.size > 1) {
-        lines.push(`### ${category}`)
-        lines.push('')
-      }
-      for (const skill of catSkills) {
-        const fm = parseFrontmatter(skill.content)
-        const name = fm?.data['name'] ?? skill.name
-        const desc = fm?.data['description'] ?? ''
-        lines.push(desc ? `- **${name}**: ${desc}` : `- **${name}**`)
-      }
-      lines.push('')
-    }
-  }
+		for (const [category, catSkills] of grouped) {
+			if (grouped.size > 1) {
+				lines.push(`### ${category}`);
+				lines.push("");
+			}
+			for (const skill of catSkills) {
+				const fm = parseFrontmatter(skill.content);
+				const name = fm?.data["name"] ?? skill.name;
+				const desc = fm?.data["description"] ?? "";
+				lines.push(desc ? `- **${name}**: ${desc}` : `- **${name}**`);
+			}
+			lines.push("");
+		}
+	}
 
-  return lines.join('\n')
+	return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
 // Merge with markers
 // ---------------------------------------------------------------------------
 
-function mergeWithMarkers(existingContent: string, generatedContent: string): string {
-  const startIdx = existingContent.indexOf(MARKER_START)
-  const endIdx = existingContent.indexOf(MARKER_END)
+function mergeWithMarkers(
+	existingContent: string,
+	generatedContent: string,
+): string {
+	const startIdx = existingContent.indexOf(MARKER_START);
+	const endIdx = existingContent.indexOf(MARKER_END);
 
-  const markerBlock = `${MARKER_START}\n${generatedContent}\n${MARKER_END}`
+	const markerBlock = `${MARKER_START}\n${generatedContent}\n${MARKER_END}`;
 
-  if (startIdx !== -1 && endIdx !== -1) {
-    return existingContent.slice(0, startIdx) + markerBlock + existingContent.slice(endIdx + MARKER_END.length)
-  }
+	if (startIdx !== -1 && endIdx !== -1) {
+		return (
+			existingContent.slice(0, startIdx) +
+			markerBlock +
+			existingContent.slice(endIdx + MARKER_END.length)
+		);
+	}
 
-  return existingContent.trimEnd() + '\n\n' + markerBlock + '\n'
+	return existingContent.trimEnd() + "\n\n" + markerBlock + "\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -218,33 +242,45 @@ function mergeWithMarkers(existingContent: string, generatedContent: string): st
 // ---------------------------------------------------------------------------
 
 async function syncClaudeCommands(
-  configDir: string,
-  projectDir: string,
-  dryRun: boolean,
-  onStep: StepCallback,
+	configDir: string,
+	projectDir: string,
+	dryRun: boolean,
+	onStep: StepCallback,
 ): Promise<void> {
-  const stepId = 'sync-claude-commands'
-  report(onStep, stepId, 'Sync Claude commands', 'running')
+	const stepId = "sync-claude-commands";
+	report(onStep, stepId, "Sync Claude commands", "running");
 
-  try {
-    const commandsSrc = path.join(configDir, 'commands')
-    if (!await fs.pathExists(commandsSrc)) {
-      report(onStep, stepId, 'Sync Claude commands', 'skipped', 'no commands dir')
-      return
-    }
+	try {
+		const commandsSrc = path.join(configDir, "commands");
+		if (!(await fs.pathExists(commandsSrc))) {
+			report(
+				onStep,
+				stepId,
+				"Sync Claude commands",
+				"skipped",
+				"no commands dir",
+			);
+			return;
+		}
 
-    const commandsDest = path.join(projectDir, '.claude', 'commands')
-    if (!dryRun) {
-      await fs.ensureDir(commandsDest)
-      await fs.copy(commandsSrc, commandsDest, { overwrite: true })
-    }
+		const commandsDest = path.join(projectDir, ".claude", "commands");
+		if (!dryRun) {
+			await fs.ensureDir(commandsDest);
+			await fs.copy(commandsSrc, commandsDest, { overwrite: true });
+		}
 
-    const cmdFiles = await fs.readdir(commandsSrc)
-    const mdCount = cmdFiles.filter(f => f.endsWith('.md')).length
-    report(onStep, stepId, 'Sync Claude commands', 'done', `${mdCount} commands`)
-  } catch (e) {
-    report(onStep, stepId, 'Sync Claude commands', 'error', String(e))
-  }
+		const cmdFiles = await fs.readdir(commandsSrc);
+		const mdCount = cmdFiles.filter((f) => f.endsWith(".md")).length;
+		report(
+			onStep,
+			stepId,
+			"Sync Claude commands",
+			"done",
+			`${mdCount} commands`,
+		);
+	} catch (e) {
+		report(onStep, stepId, "Sync Claude commands", "error", String(e));
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -252,95 +288,124 @@ async function syncClaudeCommands(
 // ---------------------------------------------------------------------------
 
 export interface SyncResult {
-  configDir: string
-  targets: string[]
-  steps: SyncStep[]
+	configDir: string;
+	targets: string[];
+	steps: SyncStep[];
 }
 
 export async function runSync(
-  options: SyncOptions,
-  onStep: StepCallback,
+	options: SyncOptions,
+	onStep: StepCallback,
 ): Promise<SyncResult> {
-  const { target, mode, projectDir, dryRun } = options
-  const targets: SyncTarget[] = target === 'all'
-    ? [...SYNC_TARGETS]
-    : [target as SyncTarget]
+	const { target, mode, projectDir, dryRun } = options;
+	const targets: SyncTarget[] =
+		target === "all" ? [...SYNC_TARGETS] : [target as SyncTarget];
 
-  const steps: SyncStep[] = []
-  const trackStep: StepCallback = (step) => {
-    const idx = steps.findIndex(s => s.id === step.id)
-    if (idx >= 0) steps[idx] = step
-    else steps.push(step)
-    onStep(step)
-  }
+	const steps: SyncStep[] = [];
+	const trackStep: StepCallback = (step) => {
+		const idx = steps.findIndex((s) => s.id === step.id);
+		if (idx >= 0) steps[idx] = step;
+		else steps.push(step);
+		onStep(step);
+	};
 
-  // Find .ai-config/
-  report(trackStep, 'find-config', 'Find .ai-config/', 'running')
-  const configDir = await findConfigDir(projectDir)
+	// Find .ai-config/
+	report(trackStep, "find-config", "Find .ai-config/", "running");
+	const configDir = await findConfigDir(projectDir);
 
-  if (!configDir) {
-    report(trackStep, 'find-config', 'Find .ai-config/', 'error', 'not found in project or parent directories')
-    return { configDir: '', targets, steps }
-  }
+	if (!configDir) {
+		report(
+			trackStep,
+			"find-config",
+			"Find .ai-config/",
+			"error",
+			"not found in project or parent directories",
+		);
+		return { configDir: "", targets, steps };
+	}
 
-  report(trackStep, 'find-config', 'Find .ai-config/', 'done', configDir)
+	report(trackStep, "find-config", "Find .ai-config/", "done", configDir);
 
-  // Load exclusions
-  const { globalExcludes, targetExcludes } = await loadSkillIgnore(configDir)
+	// Load exclusions
+	const { globalExcludes, targetExcludes } = await loadSkillIgnore(configDir);
 
-  // Collect agents and skills
-  const agentsDir = path.join(configDir, 'agents')
-  const skillsDir = path.join(configDir, 'skills')
+	// Collect agents and skills
+	const agentsDir = path.join(configDir, "agents");
+	const skillsDir = path.join(configDir, "skills");
 
-  const allAgents = await collectMarkdownEntries(agentsDir)
-  const allSkills = await collectMarkdownEntries(skillsDir)
+	const allAgents = await collectMarkdownEntries(agentsDir);
+	const allSkills = await collectMarkdownEntries(skillsDir);
 
-  // Resolve the actual project directory (may differ if configDir was found in a parent)
-  const resolvedProjectDir = path.resolve(projectDir)
+	// Resolve the actual project directory (may differ if configDir was found in a parent)
+	const resolvedProjectDir = path.resolve(projectDir);
 
-  for (const cli of targets) {
-    const stepId = `sync-${cli}`
-    report(trackStep, stepId, `Sync config for ${cli}`, 'running')
+	for (const cli of targets) {
+		const stepId = `sync-${cli}`;
+		report(trackStep, stepId, `Sync config for ${cli}`, "running");
 
-    try {
-      const cliExcludes = targetExcludes.get(cli) ?? new Set()
-      const filteredAgents = allAgents.filter(a => !isExcluded(a, globalExcludes, cliExcludes))
-      const filteredSkills = allSkills.filter(s => !isExcluded(s, globalExcludes, cliExcludes))
+		try {
+			const cliExcludes = targetExcludes.get(cli) ?? new Set();
+			const filteredAgents = allAgents.filter(
+				(a) => !isExcluded(a, globalExcludes, cliExcludes),
+			);
+			const filteredSkills = allSkills.filter(
+				(s) => !isExcluded(s, globalExcludes, cliExcludes),
+			);
 
-      const generatedContent = buildConfigContent(cli, filteredAgents, filteredSkills)
+			const generatedContent = buildConfigContent(
+				cli,
+				filteredAgents,
+				filteredSkills,
+			);
 
-      const configFileName = AI_CLI_CONFIG_FILES[cli]
-      if (!configFileName) {
-        report(trackStep, stepId, `Sync config for ${cli}`, 'skipped', 'no config file mapping')
-        continue
-      }
+			const configFileName = AI_CLI_CONFIG_FILES[cli];
+			if (!configFileName) {
+				report(
+					trackStep,
+					stepId,
+					`Sync config for ${cli}`,
+					"skipped",
+					"no config file mapping",
+				);
+				continue;
+			}
 
-      const destPath = path.join(resolvedProjectDir, configFileName)
+			const destPath = path.join(resolvedProjectDir, configFileName);
 
-      if (!dryRun) {
-        await fs.ensureDir(path.dirname(destPath))
+			if (!dryRun) {
+				await fs.ensureDir(path.dirname(destPath));
 
-        if (mode === 'merge' && await fs.pathExists(destPath)) {
-          const existing = await fs.readFile(destPath, 'utf-8')
-          const merged = mergeWithMarkers(existing, generatedContent)
-          await fs.writeFile(destPath, merged, 'utf-8')
-        } else {
-          const fullContent = `${MARKER_START}\n${generatedContent}\n${MARKER_END}\n`
-          await fs.writeFile(destPath, fullContent, 'utf-8')
-        }
-      }
+				if (mode === "merge" && (await fs.pathExists(destPath))) {
+					const existing = await fs.readFile(destPath, "utf-8");
+					const merged = mergeWithMarkers(existing, generatedContent);
+					await fs.writeFile(destPath, merged, "utf-8");
+				} else {
+					const fullContent = `${MARKER_START}\n${generatedContent}\n${MARKER_END}\n`;
+					await fs.writeFile(destPath, fullContent, "utf-8");
+				}
+			}
 
-      report(trackStep, stepId, `Sync config for ${cli}`, 'done',
-        `${filteredAgents.length} agents, ${filteredSkills.length} skills → ${configFileName}`)
+			report(
+				trackStep,
+				stepId,
+				`Sync config for ${cli}`,
+				"done",
+				`${filteredAgents.length} agents, ${filteredSkills.length} skills → ${configFileName}`,
+			);
 
-      // Sync commands for Claude
-      if (cli === 'claude') {
-        await syncClaudeCommands(configDir, resolvedProjectDir, dryRun, trackStep)
-      }
-    } catch (e) {
-      report(trackStep, stepId, `Sync config for ${cli}`, 'error', String(e))
-    }
-  }
+			// Sync commands for Claude
+			if (cli === "claude") {
+				await syncClaudeCommands(
+					configDir,
+					resolvedProjectDir,
+					dryRun,
+					trackStep,
+				);
+			}
+		} catch (e) {
+			report(trackStep, stepId, `Sync config for ${cli}`, "error", String(e));
+		}
+	}
 
-  return { configDir, targets, steps }
+	return { configDir, targets, steps };
 }
