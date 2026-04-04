@@ -166,9 +166,58 @@ Generate LESSONS.md documenting what worked and what didn't:
 
 ---
 
+## Capability 4: Polyhierarchy
+
+The same note or observation can belong to multiple contexts simultaneously without duplication.
+
+### When to Apply
+
+Use polyhierarchy when a piece of knowledge is genuinely relevant to multiple domains:
+- A bug fix that affects both security and performance
+- An architectural decision that spans frontend and backend
+- A convention that applies to multiple projects
+
+### How It Works
+
+Instead of duplicating the content, create ONE canonical observation with multiple topic keys in the `contexts` metadata field:
+
+```
+mem_save(
+  title: "canonical title",
+  topic_key: "primary/context",          ← primary key for recovery
+  type: "architecture",
+  project: "project-name",
+  content: "the actual content",
+  metadata: {
+    contexts: ["primary/context", "secondary/context", "tertiary/context"]
+  }
+)
+```
+
+When searching any of the listed contexts, the same observation surfaces — no copies, no drift.
+
+### Retrieval
+
+When loading context for a specific domain, search both the primary topic_key AND any secondary context that might hold cross-cutting observations:
+
+```
+mem_search(query: "primary/context", project: "x")    ← direct hit
+mem_search(query: "secondary/context", project: "x")  ← also surfaces the same obs
+```
+
+### Rules for Polyhierarchy
+
+1. **One source of truth** — never duplicate. If the same fact belongs in two places, use contexts[], not two saves.
+2. **Primary context = most specific** — choose the most precise topic_key as primary for targeted recovery.
+3. **Max 4 contexts per observation** — beyond that, the observation is too broad and should be split.
+4. **Update in one place** — updating the primary observation updates all contexts automatically.
+
+---
+
 ## Rules
 
 1. **Never overwrite custom CLAUDE.md sections** — merge, don't replace
 2. **One-way-door is a warning, not a veto** — user decides after seeing the alert
 3. **Retrospectives are honest** — include what went wrong, not just what went right
-4. **Save to Engram** — all three capabilities should persist across sessions
+4. **Save to Engram** — all four capabilities should persist across sessions
+5. **Polyhierarchy over duplication** — one observation, multiple contexts
