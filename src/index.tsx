@@ -2,9 +2,10 @@
 import { PassThrough } from "node:stream";
 import { render } from "ink";
 import meow from "meow";
-import React from "react";
+import { runPropose } from "./commands/propose.js";
 import type { CLI, SyncMode, SyncTarget } from "./types/index.js";
 import App from "./ui/App.js";
+import Dashboard from "./ui/Dashboard.js";
 import Doctor from "./ui/Doctor.js";
 import Sync from "./ui/Sync.js";
 import Uninstall from "./ui/Uninstall.js";
@@ -21,6 +22,8 @@ const cli = meow(
     update      Re-install configured CLIs with fresh assets
     uninstall   Remove javi-ai managed files
     sync        Compile .ai-config/ into per-CLI config files
+    dashboard   Show SDD change status dashboard
+    propose     Manage proposed skills (list, approve, reject)
 
   Options
     --dry-run       Preview without making changes
@@ -45,6 +48,11 @@ const cli = meow(
     $ javi-ai sync --target claude
     $ javi-ai sync --mode merge
     $ javi-ai sync --dry-run --project-dir /path/to/project
+    $ javi-ai dashboard
+    $ javi-ai dashboard --project my-project
+    $ javi-ai propose list
+    $ javi-ai propose approve <skill-name>
+    $ javi-ai propose reject <skill-name>
 `,
 	{
 		importMeta: import.meta,
@@ -55,6 +63,7 @@ const cli = meow(
 			target: { type: "string", default: "all" },
 			mode: { type: "string", default: "overwrite" },
 			projectDir: { type: "string", default: "." },
+			project: { type: "string", default: "" },
 		},
 	},
 );
@@ -64,7 +73,7 @@ const subcommand = cli.input[0] ?? "install";
 // When stdin doesn't support raw mode (pipes, subprocesses, CI), provide a fake
 // stdin stream so Ink doesn't crash trying to enable raw mode on a non-TTY pipe.
 const isTTY = process.stdin.isTTY === true;
-const nonInteractive = cli.flags.yes || process.env["CI"] === "1" || !isTTY;
+const nonInteractive = cli.flags.yes || process.env.CI === "1" || !isTTY;
 const fakeStdin = new PassThrough() as unknown as NodeJS.ReadStream;
 Object.defineProperty(fakeStdin, "isTTY", { value: false });
 const inkStdin = isTTY ? process.stdin : fakeStdin;
@@ -110,7 +119,21 @@ switch (subcommand) {
 		break;
 	}
 
-	case "install":
+	case "dashboard": {
+		render(
+			<Dashboard
+				project={cli.flags.project || undefined}
+				autoExit={nonInteractive}
+			/>,
+			{ stdin: inkStdin, exitOnCtrlC: !nonInteractive },
+		);
+		break;
+	}
+
+	case "propose": {
+		await runPropose(cli.input.slice(1));
+		break;
+	}
 	default: {
 		const preselectedClis = cli.flags.cli
 			? (cli.flags.cli.split(",").map((s) => s.trim()) as CLI[])

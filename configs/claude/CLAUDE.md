@@ -81,6 +81,7 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-apply [change-name]`    | Implement tasks                             |
 | `/sdd-verify [change-name]`   | Validate implementation                     |
 | `/sdd-archive [change-name]`  | Sync specs + archive                        |
+| `/sdd-compact [change-name]`  | Summarize completed tasks, reclaim context  |
 | `/sdd-compound [change-name]` | Extract learnings post-archive (compound loop) |
 | `/sdd-new --compete <name>`   | Start change with competitive planning       |
 | `/sdd-apply --experiment <name>` | Run autonomous experiment loop (try-measure-keep/revert) |
@@ -97,6 +98,7 @@ These rules apply to EVERY user request, not just SDD workflows.
 | `/sdd-apply`    | sdd-apply                                         | `~/.claude/skills/sdd-apply/SKILL.md`   |
 | `/sdd-verify`   | sdd-verify                                        | `~/.claude/skills/sdd-verify/SKILL.md`  |
 | `/sdd-archive`  | sdd-archive                                       | `~/.claude/skills/sdd-archive/SKILL.md` |
+| `/sdd-compact`  | sdd-compact                                       | `own/skills/sdd-compact/SKILL.md`       |
 | `/sdd-compound` | sdd-compound                                      | `own/skills/compound-loop/SKILL.md`     |
 | `--compete`     | sdd-propose-competitive → sdd-propose              | `own/skills/competitive-planning/SKILL.md` |
 | `--experiment`  | sdd-experiment                                      | `own/skills/sdd-experiment/SKILL.md`       |
@@ -314,6 +316,7 @@ The orchestrator MUST NOT read exploration outputs or merge them itself. Synthes
 - `sdd-apply/SKILL.md` — Implement code (v2.0 with TDD support)
 - `sdd-verify/SKILL.md` — Validate implementation (v2.0 with real execution)
 - `sdd-archive/SKILL.md` — Archive change
+- `sdd-compact/SKILL.md` — Semantic compaction of completed apply sessions (reclaim context)
 - `compound-loop/SKILL.md` — Post-archive learning extraction (compound engineering loop)
 - `discovery-relay/SKILL.md` — Cross-wave discovery relay for parallel apply
 - `competitive-planning/SKILL.md` — Dual-dispatch competitive planning for proposals
@@ -707,6 +710,62 @@ If some sub-agents succeed and others fail:
 3. Leave failed worktrees intact for inspection
 4. User decides: retry failed tasks, fix manually, or abort
 5. Do NOT auto-retry failed tasks
+
+### Refinery Pattern (Bisect on Conflict)
+
+When a parallel apply batch produces a merge conflict, activate the Refinery instead of stopping:
+
+#### Bisection Algorithm
+
+```
+CONFLICT in batch [T1, T2, T3, T4]:
+
+Round 1 — Split in half:
+  - Merge [T1, T2] → success → keep
+  - Merge [T3, T4] → conflict → bisect again
+
+Round 2 — Isolate:
+  - Merge [T3] → success → keep
+  - Merge [T4] → CONFLICT → this is the culprit
+
+Result: T4 flagged for manual resolution. T1, T2, T3 already merged.
+```
+
+#### Rules
+
+1. **Minimum granularity is one task** — bisect until a single task is isolated
+2. **Successful sub-batches are merged immediately** — don't wait for the conflict to resolve
+3. **Culprit task stays in its worktree** — do NOT remove it, user inspects it
+4. **Report format** after Refinery completes:
+
+```markdown
+## Refinery Report
+
+✅ Merged successfully: T1, T2, T3
+❌ Conflict isolated: T4
+   Branch: sdd/{change}/task-T4
+   Worktree: .worktrees/sdd-{change}-task-T4
+   Conflicting files: [list]
+
+Next: resolve conflict in T4 manually, then:
+  git checkout main && git merge sdd/{change}/task-T4
+```
+
+5. **Trigger automatically** — the Refinery activates whenever `git merge` returns exit code 1 during parallel apply. No explicit user command needed.
+
+### Semantic Compaction (/sdd-compact)
+
+After sdd-archive completes, the orchestrator SHOULD suggest compaction:
+
+> "Change archived. Run `/sdd-compact {change-name}` to summarize completed tasks and reclaim context?"
+
+When `/sdd-compact` is triggered:
+1. Launch sdd-compact sub-agent with the change name
+2. Sub-agent reads apply-progress from engram, writes compact summary
+3. Show user the token reduction estimate
+4. Do NOT delete the original apply-progress — compact lives alongside it
+
+Compaction is optional but recommended after any change with more than 10 tasks.
 
 ### Compound Engineering Loop (Post-Archive)
 

@@ -1,8 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
-import path from "path";
-import { fileURLToPath } from "url";
 import { CLI_OPTIONS } from "../constants.js";
-import type { CLI } from "../types/index.js";
+import { parseFrontmatter } from "../lib/frontmatter.js";
+import type { CLI, SkillManifest } from "../types/index.js";
+import {
+	CircularDependencyError,
+	resolveDependencyOrder,
+} from "./dependency-resolver.js";
 import { detectFormat } from "./plugins.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,6 +21,73 @@ const ASSETS_ROOT = path.resolve(__dirname, "../../");
 //   2. If delta/overrides/{skill}/SKILL.md exists → use that instead
 //   3. If delta/extensions/{skill}/EXTENSION.md exists → append to final content
 // Own skills always win (copy entire directory, overwriting upstream).
+
+/**
+ * Read the dependencies field from a SKILL.md file, if present.
+ */
+async function readSkillDependencies(skillMdPath: string): Promise<string[]> {
+	try {
+		const raw = await fs.readFile(skillMdPath, "utf-8");
+		const fm = parseFrontmatter(raw);
+		if (!fm) return [];
+		const deps = fm.data.dependencies;
+		if (Array.isArray(deps)) return deps;
+		return [];
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Collect all available skill names and their manifests from all source layers.
+ * Used to build the dependency graph before installation.
+ */
+async function buildAvailableSkillsMap(
+	atlSkills: string,
+	gsSkills: string,
+	deltaOverrides: string,
+	ownSkills: string,
+): Promise<Map<string, SkillManifest>> {
+	const available = new Map<string, SkillManifest>();
+
+	const addFromDir = async (
+		dir: string,
+		source: "upstream" | "delta" | "own",
+	) => {
+		if (!(await fs.pathExists(dir))) return;
+		const dirs = await fs.readdir(dir);
+		for (const skillDir of dirs) {
+			if (skillDir.startsWith(".") || skillDir === "_shared") continue;
+			const skillPath = path.join(dir, skillDir);
+			const stat = await fs.stat(skillPath).catch(() => null);
+			if (!stat?.isDirectory()) continue;
+
+			const format = await detectFormat(skillPath);
+			if (format === "plugin") continue;
+
+			const skillMd = path.join(skillPath, "SKILL.md");
+			const deps = (await fs.pathExists(skillMd))
+				? await readSkillDependencies(skillMd)
+				: [];
+
+			available.set(skillDir, {
+				name: skillDir,
+				version: "0",
+				source,
+				installedAt: new Date().toISOString(),
+				dependencies: deps,
+			});
+		}
+	};
+
+	await addFromDir(atlSkills, "upstream");
+	await addFromDir(gsSkills, "upstream");
+	// delta/overrides may add dependencies on top of upstream
+	await addFromDir(deltaOverrides, "delta");
+	await addFromDir(ownSkills, "own");
+
+	return available;
+}
 
 async function installSkillsForCLI(
 	cli: CLI,
@@ -46,6 +118,37 @@ async function installSkillsForCLI(
 
 	if (!dryRun) {
 		await fs.ensureDir(dest);
+	}
+
+	// ── Resolve dependency order ───────────────────────────────────────────
+	const availableSkills = await buildAvailableSkillsMap(
+		atlSkills,
+		gsSkills,
+		deltaOverrides,
+		ownSkills,
+	);
+	const allSkillNames = [...availableSkills.keys()];
+
+	let orderedSkills: string[];
+	try {
+		const result = resolveDependencyOrder(allSkillNames, availableSkills);
+		if (result.missing.length > 0) {
+			for (const missing of result.missing) {
+				console.warn(
+					`[javi-ai] Warning: dependency "${missing}" not found — skipping`,
+				);
+			}
+		}
+		orderedSkills = result.ordered;
+	} catch (err) {
+		if (err instanceof CircularDependencyError) {
+			console.error(`[javi-ai] Error: ${err.message}`);
+			console.error(
+				"[javi-ai] Aborting skill installation due to circular dependency.",
+			);
+			return [];
+		}
+		throw err;
 	}
 
 	// ── Helper: install a single upstream skill with delta layers ──────────
@@ -102,27 +205,65 @@ async function installSkillsForCLI(
 		installed.push(skillDir);
 	}
 
-	// ── Layer 1: agent-teams-lite skills ───────────────────────────────────
+	// ── Build lookup maps for each layer ──────────────────────────────────
+	const atlSkillPaths = new Map<string, string>();
 	if (await fs.pathExists(atlSkills)) {
 		const dirs = await fs.readdir(atlSkills);
 		for (const skillDir of dirs) {
 			if (skillDir.startsWith(".") || skillDir === "_shared") continue;
 			const skillPath = path.join(atlSkills, skillDir);
-			const stat = await fs.stat(skillPath);
-			if (!stat.isDirectory()) continue;
-			await installUpstreamSkill(skillDir, skillPath);
+			const stat = await fs.stat(skillPath).catch(() => null);
+			if (stat?.isDirectory()) atlSkillPaths.set(skillDir, skillPath);
 		}
 	}
 
-	// ── Layer 2: gentleman-skills curated ──────────────────────────────────
+	const gsSkillPaths = new Map<string, string>();
 	if (await fs.pathExists(gsSkills)) {
 		const dirs = await fs.readdir(gsSkills);
 		for (const skillDir of dirs) {
 			if (skillDir.startsWith(".")) continue;
 			const skillPath = path.join(gsSkills, skillDir);
-			const stat = await fs.stat(skillPath);
-			if (!stat.isDirectory()) continue;
-			await installUpstreamSkill(skillDir, skillPath);
+			const stat = await fs.stat(skillPath).catch(() => null);
+			if (stat?.isDirectory()) gsSkillPaths.set(skillDir, skillPath);
+		}
+	}
+
+	const ownSkillPaths = new Map<string, string>();
+	if (await fs.pathExists(ownSkills)) {
+		const dirs = await fs.readdir(ownSkills);
+		for (const skillDir of dirs) {
+			if (skillDir.startsWith(".")) continue;
+			const skillPath = path.join(ownSkills, skillDir);
+			const format = await detectFormat(skillPath);
+			if (format !== "plugin") ownSkillPaths.set(skillDir, skillPath);
+		}
+	}
+
+	// ── Install in dependency-resolved order ──────────────────────────────
+	const ownInstalled = new Set<string>();
+
+	for (const skillDir of orderedSkills) {
+		// own skills take highest priority
+		if (ownSkillPaths.has(skillDir)) {
+			const skillPath = ownSkillPaths.get(skillDir)!;
+			const destDir = path.join(dest, skillDir);
+			if (!dryRun) {
+				const destStat = await fs.lstat(destDir).catch(() => null);
+				if (destStat?.isSymbolicLink()) await fs.remove(destDir);
+				await fs.copy(skillPath, destDir, { overwrite: true });
+			}
+			installed.push(skillDir);
+			ownInstalled.add(skillDir);
+			continue;
+		}
+
+		// upstream skills (ATL takes priority over GS — GS overwrites ATL in original code,
+		// so GS wins; replicate: install ATL then GS for same skill)
+		if (atlSkillPaths.has(skillDir)) {
+			await installUpstreamSkill(skillDir, atlSkillPaths.get(skillDir)!);
+		}
+		if (gsSkillPaths.has(skillDir)) {
+			await installUpstreamSkill(skillDir, gsSkillPaths.get(skillDir)!);
 		}
 	}
 
@@ -135,29 +276,6 @@ async function installSkillsForCLI(
 			await fs.copy(sharedSrc, sharedDest, { overwrite: true });
 		}
 		installed.push("_shared");
-	}
-
-	// ── Layer 4: own skills (highest priority, full directory copy) ────────
-	// Note: plugin-format directories (with manifest.json) are skipped here —
-	// they are handled by installPluginsForCLI in the plugins installer.
-	if (await fs.pathExists(ownSkills)) {
-		const dirs = await fs.readdir(ownSkills);
-		for (const skillDir of dirs) {
-			if (skillDir.startsWith(".")) continue;
-			const skillPath = path.join(ownSkills, skillDir);
-
-			// Skip plugin-format directories
-			const format = await detectFormat(skillPath);
-			if (format === "plugin") continue;
-
-			const destDir = path.join(dest, skillDir);
-			if (!dryRun) {
-				const destStat = await fs.lstat(destDir).catch(() => null);
-				if (destStat?.isSymbolicLink()) await fs.remove(destDir);
-				await fs.copy(skillPath, destDir, { overwrite: true });
-			}
-			installed.push(skillDir);
-		}
 	}
 
 	return installed;

@@ -7,6 +7,9 @@ license: MIT
 metadata:
   author: gentleman-programming
   version: "2.0"
+dependencies:
+  - worktree-flow
+  - cost-tracking
 ---
 
 ## Purpose

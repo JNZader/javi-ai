@@ -8,6 +8,9 @@ metadata:
   version: "1.0"
   tags: [learning, reflection, knowledge-management, compound-engineering]
   category: workflow
+dependencies:
+  - sdd-apply
+  - sdd-explore
 ---
 
 # Compound Engineering Loop

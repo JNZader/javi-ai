@@ -39,6 +39,7 @@ export interface SkillManifest {
 	source: "upstream" | "delta" | "own";
 	installedAt: string;
 	checksum?: string;
+	dependencies?: string[];
 }
 
 // --- Plugin types ---
@@ -119,6 +120,34 @@ export interface MarkdownEntry {
 }
 
 export interface FrontmatterResult {
-	data: Record<string, string>;
+	data: Record<string, string | string[]>;
 	content: string;
+}
+
+// --- SDD Dashboard types ---
+
+export type SddPhase =
+	| "explore"
+	| "proposal"
+	| "spec"
+	| "design"
+	| "tasks"
+	| "apply"
+	| "verify"
+	| "archive";
+
+export interface SddChange {
+	name: string;
+	currentPhase: SddPhase;
+	completedPhases: SddPhase[];
+	taskTotal?: number;
+	taskDone?: number;
+	awaitingApproval: boolean;
+	lastActivity: string; // ISO date string
+}
+
+export interface DashboardResult {
+	changes: SddChange[];
+	recentActivity: Array<{ change: string; phase: SddPhase; timestamp: string }>;
+	project: string;
 }

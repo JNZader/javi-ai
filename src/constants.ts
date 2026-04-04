@@ -1,5 +1,5 @@
-import os from "os";
-import path from "path";
+import os from "node:os";
+import path from "node:path";
 import type { AutonomyLevel, CLIOption, Feature } from "./types/index.js";
 
 export const HOME = os.homedir();
@@ -57,6 +57,8 @@ export const CLI_OPTIONS: CLIOption[] = [
 
 export const MANIFEST_PATH = path.join(HOME, ".javi-ai", "manifest.json");
 export const BACKUP_DIR = path.join(HOME, ".javi-ai", "backups");
+export const PROPOSED_DIR = path.join(HOME, ".javi-ai", "proposed");
+export const CLAUDE_SKILLS_DIR = path.join(HOME, ".claude", "skills");
 
 export const MARKER_START = "<!-- BEGIN JAVI-AI -->";
 export const MARKER_END = "<!-- END JAVI-AI -->";

@@ -9,6 +9,8 @@ metadata:
   tags: [safety, circuit-breaker, sub-agents, orchestration]
   category: safety
   inspired-by: https://github.com/SethGammon/Citadel
+dependencies:
+  - sdd-apply
 allowed-tools: Read, Bash
 ---
 
