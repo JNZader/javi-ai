@@ -1,6 +1,7 @@
 import { Box, Text, useInput } from "ink";
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import { CLI_OPTIONS } from "../constants.js";
+import { detectAgents } from "../installer/agent-detector.js";
 import type { CLI } from "../types/index.js";
 import { theme } from "./theme.js";
 
@@ -9,8 +10,20 @@ interface Props {
 }
 
 export default function CLISelector({ onConfirm }: Props) {
+	const detection = useMemo(() => detectAgents(), []);
+	const detectedIds = useMemo(
+		() => new Set(detection.filter((d) => d.detected).map((d) => d.id)),
+		[detection],
+	);
+	const detectionMap = useMemo(
+		() => new Map(detection.map((d) => [d.id, d])),
+		[detection],
+	);
+
 	const [cursor, setCursor] = useState(0);
-	const [selected, setSelected] = useState<Set<CLI>>(new Set(["claude"]));
+	const [selected, setSelected] = useState<Set<CLI>>(
+		() => new Set(detectedIds),
+	);
 
 	useInput((input, key) => {
 		if (key.upArrow) setCursor((c) => Math.max(0, c - 1));
@@ -29,9 +42,14 @@ export default function CLISelector({ onConfirm }: Props) {
 		}
 	});
 
+	const detectedCount = detectedIds.size;
+
 	return (
 		<Box flexDirection="column">
 			<Text bold>Select AI CLIs to configure:</Text>
+			<Text color={theme.muted} dimColor>
+				{detectedCount} detected on your system (auto-selected)
+			</Text>
 
 			{/* Left-bordered list */}
 			<Box
@@ -45,14 +63,28 @@ export default function CLISelector({ onConfirm }: Props) {
 				borderColor={theme.muted}
 				paddingLeft={1}
 			>
-				{CLI_OPTIONS.map((cli, i) => (
-					<Box key={cli.id}>
-						<Text color={i === cursor ? theme.primary : "white"}>
-							{i === cursor ? "▶ " : "  "}
-							{selected.has(cli.id) ? "◉" : "○"} {cli.label}
-						</Text>
-					</Box>
-				))}
+				{CLI_OPTIONS.map((cli, i) => {
+					const det = detectionMap.get(cli.id);
+					const isDetected = det?.detected ?? false;
+					const badge = isDetected
+						? det?.reason === "binary"
+							? " (bin)"
+							: " (cfg)"
+						: "";
+					return (
+						<Box key={cli.id} gap={1}>
+							<Text color={i === cursor ? theme.primary : "white"}>
+								{i === cursor ? "▶ " : "  "}
+								{selected.has(cli.id) ? "◉" : "○"} {cli.label}
+							</Text>
+							{isDetected && (
+								<Text color={theme.accent} dimColor>
+									{badge}
+								</Text>
+							)}
+						</Box>
+					);
+				})}
 			</Box>
 
 			{/* Count + hints */}
