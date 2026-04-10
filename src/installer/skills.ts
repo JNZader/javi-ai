@@ -92,6 +92,7 @@ async function buildAvailableSkillsMap(
 async function installSkillsForCLI(
 	cli: CLI,
 	dryRun: boolean,
+	skillFilter?: string[],
 ): Promise<string[]> {
 	const cliOption = CLI_OPTIONS.find((c) => c.id === cli);
 	if (!cliOption) return [];
@@ -127,11 +128,26 @@ async function installSkillsForCLI(
 		deltaOverrides,
 		ownSkills,
 	);
-	const allSkillNames = [...availableSkills.keys()];
+
+	// When skillFilter is provided, install only those skills (+ transitive deps)
+	let requestedSkills: string[];
+	if (skillFilter && skillFilter.length > 0) {
+		requestedSkills = [];
+		for (const name of skillFilter) {
+			if (availableSkills.has(name)) {
+				requestedSkills.push(name);
+			} else {
+				console.warn(`[javi-ai] Warning: skill "${name}" not found — skipping`);
+			}
+		}
+		if (requestedSkills.length === 0) return [];
+	} else {
+		requestedSkills = [...availableSkills.keys()];
+	}
 
 	let orderedSkills: string[];
 	try {
-		const result = resolveDependencyOrder(allSkillNames, availableSkills);
+		const result = resolveDependencyOrder(requestedSkills, availableSkills);
 		if (result.missing.length > 0) {
 			for (const missing of result.missing) {
 				console.warn(
@@ -281,4 +297,4 @@ async function installSkillsForCLI(
 	return installed;
 }
 
-export { installSkillsForCLI };
+export { buildAvailableSkillsMap, installSkillsForCLI };

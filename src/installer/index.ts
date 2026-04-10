@@ -31,7 +31,11 @@ export async function runInstall(
 				status: "running",
 			});
 			try {
-				const installed = await installSkillsForCLI(cli, options.dryRun);
+				const installed = await installSkillsForCLI(
+					cli,
+					options.dryRun,
+					options.skillFilter,
+				);
 				onStep({
 					id: `${cli}-skills`,
 					label: `Skills for ${cliOption.label}`,
