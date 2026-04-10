@@ -4,6 +4,10 @@ import { render } from "ink";
 import meow from "meow";
 import { runList } from "./commands/list.js";
 import { runPropose } from "./commands/propose.js";
+import {
+	analyzeCommonGround,
+	formatCommonGround,
+} from "./common-ground/index.js";
 import type { CLI, SyncMode, SyncTarget } from "./types/index.js";
 import App from "./ui/App.js";
 import Dashboard from "./ui/Dashboard.js";
@@ -26,6 +30,7 @@ const cli = meow(
     sync        Compile .ai-config/ into per-CLI config files
     dashboard   Show SDD change status dashboard
     propose     Manage proposed skills (list, approve, reject)
+    common-ground  Surface project assumptions before coding
 
   Options
     --dry-run       Preview without making changes
@@ -138,6 +143,13 @@ switch (subcommand) {
 
 	case "list": {
 		await runList();
+		break;
+	}
+
+	case "common-ground": {
+		const dir = cli.input[1] ?? ".";
+		const result = await analyzeCommonGround(dir);
+		console.log(formatCommonGround(result));
 		break;
 	}
 
