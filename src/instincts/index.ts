@@ -1,4 +1,9 @@
 export {
+	BUILTIN_INSTINCTS,
+	getBuiltinInstincts,
+	isBuiltinInstinct,
+} from "./builtins.js";
+export {
 	addInstinct,
 	boostConfidence,
 	createCollection,

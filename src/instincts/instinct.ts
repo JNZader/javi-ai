@@ -16,7 +16,7 @@ export interface Instinct {
 	id: string;
 	rule: string; // The behavioral rule (1-5 lines max)
 	confidence: number; // 0.0-1.0, how well this instinct has performed
-	source: "user" | "learned" | "imported";
+	source: "user" | "learned" | "imported" | "built-in";
 	tags: string[];
 	createdAt: string;
 	usedCount: number;
