@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import path from "node:path";
 import { PassThrough } from "node:stream";
 import { render } from "ink";
 import meow from "meow";
@@ -8,6 +9,8 @@ import {
 	analyzeCommonGround,
 	formatCommonGround,
 } from "./common-ground/index.js";
+import { HOME } from "./constants.js";
+import { listVariants } from "./skill-variants/index.js";
 import type { CLI, SyncMode, SyncTarget } from "./types/index.js";
 import App from "./ui/App.js";
 import Dashboard from "./ui/Dashboard.js";
@@ -31,6 +34,7 @@ const cli = meow(
     dashboard   Show SDD change status dashboard
     propose     Manage proposed skills (list, approve, reject)
     common-ground  Surface project assumptions before coding
+    variants       List available variants for a skill
 
   Options
     --dry-run       Preview without making changes
@@ -150,6 +154,26 @@ switch (subcommand) {
 		const dir = cli.input[1] ?? ".";
 		const result = await analyzeCommonGround(dir);
 		console.log(formatCommonGround(result));
+		break;
+	}
+
+	case "variants": {
+		const skillName = cli.input[1];
+		if (!skillName) {
+			console.error("Usage: javi-ai variants <skill-name>");
+			process.exit(1);
+		}
+		const skillDir = path.join(HOME, ".claude", "skills", skillName);
+		const vars = await listVariants(skillDir);
+		if (vars.length === 0) {
+			console.log(`No variants found for ${skillName}`);
+		} else {
+			console.log(`Variants for ${skillName}:`);
+			for (const v of vars) {
+				const badge = v.isDefault ? " (default)" : "";
+				console.log(`  - ${v.name}${badge}: ${v.description}`);
+			}
+		}
 		break;
 	}
 
