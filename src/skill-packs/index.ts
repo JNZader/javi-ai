@@ -6,7 +6,7 @@ export {
 	type PackResolution,
 	parseRegistry,
 	parseSkillModes,
-	resolveMo‌de,
+	resolveMode,
 	resolvePack,
 	type SkillMode,
 	type SkillPack,
