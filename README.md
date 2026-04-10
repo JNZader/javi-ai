@@ -62,6 +62,7 @@ flowchart TB
 | Command | Description |
 |---------|-------------|
 | `install` | Install AI development layer for selected CLIs (default) |
+| `list` | List all available skills grouped by source |
 | `doctor` | Show health report of current installation |
 | `update` | Re-install configured CLIs with fresh assets |
 | `uninstall` | Remove javi-ai managed files |
@@ -69,6 +70,8 @@ flowchart TB
 
 ```bash
 npx javi-ai install --cli claude,opencode
+npx javi-ai install --skills react-19,typescript
+npx javi-ai list
 npx javi-ai doctor
 npx javi-ai update
 npx javi-ai uninstall
@@ -81,6 +84,7 @@ npx javi-ai sync --target claude --mode merge
 |------|------|---------|-------------|
 | `--dry-run` | boolean | `false` | Preview changes without writing files |
 | `--cli` | string | — | Comma-separated CLIs |
+| `--skills` | string | — | Comma-separated skills to cherry-pick (installs only these + deps) |
 | `--yes` / `-y` | boolean | `false` | Non-interactive mode |
 
 ### Sync Flags

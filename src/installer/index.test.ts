@@ -200,7 +200,7 @@ describe("runInstall — feature routing", () => {
 	it('installs skills when "skills" is in features', async () => {
 		const { onStep } = collectSteps();
 		await runInstall(makeOptions({ features: ["skills"] }), onStep);
-		expect(mockInstallSkills).toHaveBeenCalledWith("claude", false);
+		expect(mockInstallSkills).toHaveBeenCalledWith("claude", false, undefined);
 	});
 
 	it('does NOT install skills when "skills" is NOT in features', async () => {

@@ -187,6 +187,14 @@ async function createAssetTree(): Promise<void> {
 		"# Obsidian",
 		"utf-8",
 	);
+
+	// Extra skill for filter testing (no dependencies to avoid resolver direction issue)
+	await fs.ensureDir(path.join(gsSkills, "zustand-5"));
+	await fs.writeFile(
+		path.join(gsSkills, "zustand-5", "SKILL.md"),
+		"# Zustand 5 Skill",
+		"utf-8",
+	);
 }
 
 describe("installSkillsForCLI", () => {
@@ -417,5 +425,80 @@ describe("installSkillsForCLI", () => {
 			"# Updated",
 		);
 		expect(await fs.pathExists(path.join(destRefs, "new.md"))).toBe(true);
+	});
+
+	// ── skillFilter support ──────────────────────────────────────────────
+
+	it("skillFilter: installs only selected skills", async () => {
+		const result = await installSkillsForCLI("claude", false, [
+			"react-19",
+			"typescript",
+		]);
+
+		// Selected skills installed
+		expect(result).toContain("react-19");
+		expect(result).toContain("typescript");
+		// _shared is always installed
+		expect(result).toContain("_shared");
+
+		// Other skills should NOT be installed
+		expect(result).not.toContain("sdd-explore");
+		expect(result).not.toContain("sdd-apply");
+		expect(result).not.toContain("skill-creator");
+		expect(result).not.toContain("obsidian-braindump");
+		expect(result).not.toContain("zustand-5");
+	});
+
+	it("skillFilter: warns and skips unknown skills, installs valid ones", async () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		const result = await installSkillsForCLI("claude", false, [
+			"nonexistent-skill",
+			"react-19",
+		]);
+
+		// Warning for unknown skill
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('"nonexistent-skill" not found'),
+		);
+
+		// Valid skill still installed
+		expect(result).toContain("react-19");
+		expect(result).not.toContain("nonexistent-skill");
+
+		warnSpy.mockRestore();
+	});
+
+	it("skillFilter: returns empty when all requested skills are unknown", async () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		const result = await installSkillsForCLI("claude", false, [
+			"nonexistent-a",
+			"nonexistent-b",
+		]);
+
+		expect(result).toEqual([]);
+		expect(warnSpy).toHaveBeenCalledTimes(2);
+
+		warnSpy.mockRestore();
+	});
+
+	it("skillFilter: no filter installs all (backward compatible)", async () => {
+		const resultNoFilter = await installSkillsForCLI("claude", true);
+		const resultUndefined = await installSkillsForCLI(
+			"claude",
+			true,
+			undefined,
+		);
+		const resultEmpty = await installSkillsForCLI("claude", true, []);
+
+		// All three should produce the same result
+		expect(resultNoFilter).toEqual(resultUndefined);
+		expect(resultNoFilter).toEqual(resultEmpty);
+
+		// Should contain all skills
+		expect(resultNoFilter).toContain("react-19");
+		expect(resultNoFilter).toContain("sdd-apply");
+		expect(resultNoFilter).toContain("skill-creator");
 	});
 });

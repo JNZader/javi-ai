@@ -31,6 +31,7 @@ export interface InstallOptions {
 	dryRun: boolean;
 	backup: boolean;
 	autonomyLevel?: AutonomyLevel;
+	skillFilter?: string[];
 }
 
 export interface SkillManifest {

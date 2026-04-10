@@ -2,6 +2,7 @@
 import { PassThrough } from "node:stream";
 import { render } from "ink";
 import meow from "meow";
+import { runList } from "./commands/list.js";
 import { runPropose } from "./commands/propose.js";
 import type { CLI, SyncMode, SyncTarget } from "./types/index.js";
 import App from "./ui/App.js";
@@ -18,6 +19,7 @@ const cli = meow(
 
   Commands
     install     Install AI development layer (default)
+    list        List all available skills grouped by source
     doctor      Show health report of current installation
     update      Re-install configured CLIs with fresh assets
     uninstall   Remove javi-ai managed files
@@ -28,6 +30,7 @@ const cli = meow(
   Options
     --dry-run       Preview without making changes
     --cli           Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot)
+    --skills        Comma-separated list of skills to install (cherry-pick)
     --yes           Non-interactive mode (auto-confirm, skip selectors)
     --version       Show version
     --help          Show this help
@@ -41,6 +44,8 @@ const cli = meow(
     $ javi-ai
     $ javi-ai install --dry-run
     $ javi-ai install --cli claude,opencode
+    $ javi-ai install --skills react-19,typescript
+    $ javi-ai list
     $ javi-ai doctor
     $ javi-ai update
     $ javi-ai uninstall
@@ -60,6 +65,7 @@ const cli = meow(
 			dryRun: { type: "boolean", default: false },
 			yes: { type: "boolean", default: false, shortFlag: "y" },
 			cli: { type: "string", default: "" },
+			skills: { type: "string", default: "" },
 			target: { type: "string", default: "all" },
 			mode: { type: "string", default: "overwrite" },
 			projectDir: { type: "string", default: "." },
@@ -130,6 +136,11 @@ switch (subcommand) {
 		break;
 	}
 
+	case "list": {
+		await runList();
+		break;
+	}
+
 	case "propose": {
 		await runPropose(cli.input.slice(1));
 		break;
@@ -139,10 +150,15 @@ switch (subcommand) {
 			? (cli.flags.cli.split(",").map((s) => s.trim()) as CLI[])
 			: undefined;
 
+		const skillFilter = cli.flags.skills
+			? cli.flags.skills.split(",").map((s) => s.trim())
+			: undefined;
+
 		render(
 			<App
 				dryRun={cli.flags.dryRun}
 				preselectedClis={preselectedClis}
+				skillFilter={skillFilter}
 				autoConfirm={nonInteractive}
 			/>,
 			{ stdin: inkStdin, exitOnCtrlC: !nonInteractive },

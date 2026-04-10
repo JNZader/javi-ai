@@ -22,6 +22,7 @@ For each selected CLI:
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--cli` | string | — | Comma-separated list of CLIs |
+| `--skills` | string | — | Comma-separated skills to cherry-pick (only these + transitive deps) |
 | `--dry-run` | boolean | `false` | Preview without writing files |
 | `--yes` / `-y` | boolean | `false` | Non-interactive mode |
 
@@ -29,8 +30,29 @@ For each selected CLI:
 
 ```bash
 npx javi-ai install --cli claude,opencode
+npx javi-ai install --skills react-19,typescript
+npx javi-ai install --cli claude --skills sdd-apply --yes
 npx javi-ai install --dry-run
-npx javi-ai install --cli claude --yes
+```
+
+---
+
+## list
+
+List all available skills grouped by source layer.
+
+```bash
+npx javi-ai list
+```
+
+### What it does
+
+Scans all four source layers (ATL upstream, Gentleman-Skills, delta overrides, own) and prints every available skill grouped by source. For each skill, shows its name and any declared dependencies.
+
+### Examples
+
+```bash
+npx javi-ai list
 ```
 
 ---

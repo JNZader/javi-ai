@@ -34,12 +34,14 @@ const DEFAULT_FEATURES: Feature[] = [
 interface AppProps {
 	dryRun?: boolean;
 	preselectedClis?: CLI[];
+	skillFilter?: string[];
 	autoConfirm?: boolean;
 }
 
 export default function App({
 	dryRun = false,
 	preselectedClis,
+	skillFilter,
 	autoConfirm = false,
 }: AppProps) {
 	const { exit } = useApp();
@@ -78,7 +80,14 @@ export default function App({
 		setStage("installing");
 
 		await runInstall(
-			{ clis: selectedClis, features, dryRun, backup: true, autonomyLevel },
+			{
+				clis: selectedClis,
+				features,
+				dryRun,
+				backup: true,
+				autonomyLevel,
+				skillFilter,
+			},
 			(step) =>
 				setSteps((prev) => {
 					const idx = prev.findIndex((s) => s.id === step.id);
