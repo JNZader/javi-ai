@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: gentleman-programming
-  version: "2.0"
+  version: "2.2"
 ---
 
 ## Purpose
@@ -87,9 +87,36 @@ Parse what the user wants to explore:
 - Is this a new feature? A bug fix? A refactor?
 - What domain does it touch?
 
-### Step 3: Investigate the Codebase
+### Step 3: Investigate the Codebase (with context pruning)
 
-Read relevant code to understand:
+Before reading raw files, use repoforge's `context-prune` command to get a token-optimized view of the affected code. This achieves 42-95% token reduction by extracting only relevant symbols and their dependents.
+
+#### 3a. Identify affected files
+
+Use Glob and Grep to build a list of files related to the topic. Collect them into a `changed_files` list.
+
+#### 3b. Run context pruning
+
+```bash
+repoforge context-prune -w {project_path} --files {file1} --files {file2} --json
+```
+
+This returns a JSON payload with:
+- `symbols` — functions, classes, and variables defined in the changed files
+- `dependent_symbols` — code in OTHER files that references the changed symbols
+- `reduction_ratio` — how much token savings you got (e.g., 0.85 = 85% reduction)
+- `total_lines_original` vs `total_lines_pruned` — raw line counts
+
+Use `--depth 2` for deeper dependency chains when exploring architectural impact.
+Use `--no-dependents` when you only care about the changed files themselves.
+
+#### 3c. Fallback to raw reads
+
+If `repoforge` is not available (command not found), fall back to reading raw files directly. The pruning step is an optimization, not a hard requirement.
+
+#### 3d. Deep investigation
+
+With the pruned context loaded, investigate:
 - Current architecture and patterns
 - Files and modules that would be affected
 - Existing behavior that relates to the request
@@ -97,12 +124,15 @@ Read relevant code to understand:
 
 ```
 INVESTIGATE:
-├── Read entry points and key files
+├── Run context-prune on identified files (3b)
+├── Read entry points and key files (only if pruned output is insufficient)
 ├── Search for related functionality
 ├── Check existing tests (if any)
 ├── Look for patterns already in use
 └── Identify dependencies and coupling
 ```
+
+> **Token budget tip**: For explorations touching >10 files, ALWAYS use context-prune first. Reading 10 raw files can easily consume 20k+ tokens; pruned output typically uses 2-5k.
 
 ### Step 4: Analyze Options
 
@@ -112,6 +142,48 @@ If there are multiple approaches, compare them:
 |----------|------|------|------------|
 | Option A | ... | ... | Low/Med/High |
 | Option B | ... | ... | Low/Med/High |
+
+### Step 4b: Red-Team Pass (Optional)
+
+When the orchestrator includes `red_team: true` in the prompt, or the user triggers exploration with "explore critically", "red-team", or "stress test approaches", run a red-team pass BEFORE persisting.
+
+**Purpose**: Actively attack each approach from Step 4 to surface hidden weaknesses, implicit assumptions, and failure modes that optimistic analysis misses. This prevents fragile proposals from advancing through the SDD pipeline.
+
+**Red-Team Protocol**:
+
+For EACH approach identified in Step 4, answer these adversarial questions:
+
+1. **Failure Modes**: How does this approach fail? What happens when it fails silently?
+2. **Hidden Assumptions**: What unstated assumptions does this approach make about the codebase, runtime, or team?
+3. **Scalability Traps**: Does this approach work at 10x the current scale? 100x?
+4. **Dependency Risk**: What external dependencies does this introduce? What if they break/change?
+5. **Migration Cost**: What is the REAL cost of adopting this AND the cost of reverting it later?
+6. **Security Surface**: Does this approach expand the attack surface? How?
+
+**Output Format** (append to Step 4 analysis):
+
+```markdown
+### Red-Team Analysis
+
+| Approach | Vulnerability | Severity | Mitigation |
+|----------|--------------|----------|------------|
+| Option A | Assumes DB connections never timeout | High | Add circuit breaker + retry logic |
+| Option A | No rollback strategy if migration fails | Critical | Define rollback script before starting |
+| Option B | Couples to third-party API contract | Medium | Add adapter layer + contract tests |
+
+### Red-Team Verdict
+- **Strongest approach after attack**: {which approach survived best}
+- **Approaches eliminated**: {which approaches have critical unmitigated risks}
+- **Required mitigations before proposal**: {list of must-fix items}
+```
+
+If red-team analysis eliminates ALL approaches, update the Recommendation in Step 6 to state that none of the current approaches are viable and suggest what further exploration is needed.
+
+**Rules for red-team pass**:
+- Be genuinely adversarial — do not softball the analysis
+- Every claim must reference specific code, patterns, or architectural constraints found in Step 3
+- If an approach has zero vulnerabilities found, state that explicitly (this is suspicious and should be noted)
+- The red-team pass does NOT change the approaches list — it adds risk metadata that sdd-propose can use
 
 ### Step 5: Persist Artifact
 
