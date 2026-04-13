@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: gentleman-programming
-  version: "2.0"
+  version: "2.1"
 dependencies:
   - worktree-flow
   - cost-tracking
@@ -161,6 +161,102 @@ FOR EACH TASK:
 └── Note any issues or deviations
 ```
 
+### Step 3c: Log Iteration to iterations.jsonl
+
+**After each task attempt** (whether kept or reverted), append a JSON line to the iteration log. This creates an audit trail that future sessions can read to avoid repeating failed approaches.
+
+#### Log File Location
+
+```
+openspec/changes/{change-name}/iterations.jsonl    ← append-only log
+```
+
+If mode is `engram`, also persist a snapshot to engram periodically (see Step 5).
+If mode is `none`, skip file writing but still track iterations in memory for the return summary.
+
+#### JSON Line Schema
+
+Each line in `iterations.jsonl` is a self-contained JSON object:
+
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "task_id": "1.1",
+  "task_description": "Create internal/auth/middleware.go with JWT validation",
+  "iteration": 1,
+  "approach": "Used middleware pattern with jose library for JWT parsing",
+  "before_state": {
+    "files_existed": ["internal/auth/types.go"],
+    "files_missing": ["internal/auth/middleware.go"],
+    "tests_passing": 12,
+    "tests_failing": 0
+  },
+  "after_state": {
+    "files_created": ["internal/auth/middleware.go"],
+    "files_modified": [],
+    "tests_passing": 14,
+    "tests_failing": 0
+  },
+  "outcome": "kept",
+  "reason": "All tests pass, implementation matches spec REQ-01",
+  "duration_tool_calls": 5,
+  "deviations": []
+}
+```
+
+#### Field Reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | string (ISO 8601) | When the attempt started |
+| `task_id` | string | Task identifier from tasks.md (e.g., "1.1", "2.3") |
+| `task_description` | string | Brief description from tasks.md |
+| `iteration` | number | Attempt number for this task (1 = first try, 2 = retry, etc.) |
+| `approach` | string | What approach was tried and key implementation decisions |
+| `before_state` | object | Snapshot before the attempt: existing files, test counts |
+| `after_state` | object | Snapshot after: created/modified files, test counts |
+| `outcome` | enum | `"kept"` — changes retained, `"reverted"` — changes rolled back, `"partial"` — some changes kept |
+| `reason` | string | Why the attempt was kept or reverted |
+| `duration_tool_calls` | number | How many tool calls this attempt consumed |
+| `deviations` | array of string | Any deviations from design, empty if none |
+
+#### When to Log
+
+```
+FOR EACH TASK attempt:
+├── BEFORE implementation:
+│   ├── Record timestamp, task_id, task_description
+│   ├── Snapshot before_state (list relevant files, run test count if quick)
+│   └── Note the approach being tried
+│
+├── AFTER implementation (success or failure):
+│   ├── Snapshot after_state
+│   ├── Determine outcome: kept / reverted / partial
+│   ├── Record reason and deviations
+│   └── Append the JSON line to iterations.jsonl
+│
+└── ON RETRY (if task failed and is being re-attempted):
+    ├── Increment iteration counter
+    ├── Note the NEW approach (must differ from previous)
+    └── Log as a new line (do NOT overwrite the failed attempt line)
+```
+
+#### Reading Previous Iterations
+
+When starting a task, **check if iterations.jsonl exists** and contains entries for the same task_id:
+
+```
+IF iterations.jsonl contains entries for current task_id:
+├── Read all entries for that task
+├── Identify approaches that were REVERTED (failed approaches)
+├── Do NOT repeat a reverted approach — try a different strategy
+├── Use kept entries as context for dependent tasks
+└── If all reasonable approaches have been tried and reverted:
+    STOP and report to orchestrator as BLOCKED
+```
+
+This prevents the classic failure loop where agents retry the same broken approach indefinitely.
+
 ### Step 4: Mark Tasks Complete
 
 Update `tasks.md` — change `- [ ]` to `- [x]` for completed tasks:
@@ -227,9 +323,30 @@ These get relayed to subsequent batches so they maintain consistency.}
 {Any places where implementation diverged from design.md and why.
 "None — implementation matches design." if no deviations.}
 
+### Iteration Log Summary
+| Task | Attempts | Final Outcome | Approaches Tried |
+|------|----------|---------------|-----------------|
+| {task_id} | {N} | kept/reverted | {brief list} |
+
 ### Remaining Tasks
 - [ ] {next task}
 ```
+
+#### Persisting iterations.jsonl to Engram
+
+If mode is `engram` or `hybrid`, save a snapshot of the iteration log after each batch:
+
+```
+mem_save(
+  title: "sdd/{change-name}/iterations",
+  topic_key: "sdd/{change-name}/iterations",
+  type: "architecture",
+  project: "{project}",
+  content: "{full contents of iterations.jsonl}"
+)
+```
+
+This allows future sessions to recover the iteration log even if the filesystem artifact is lost.
 
 #### Reading Ralph Loop Context
 
@@ -266,6 +383,14 @@ Return to the orchestrator:
 | 1.2 | `path/to/test.ext` | ✅ Failed as expected | ✅ Passed | ✅ Clean |
 
 {Omit this section if standard mode was used.}
+
+### Iteration Log
+| Task | Attempts | Outcome | Approach |
+|------|----------|---------|----------|
+| {task_id} | {N} | kept | {brief approach description} |
+| {task_id} | {N} | reverted → kept | Attempt 1: {failed approach}. Attempt 2: {successful approach} |
+
+{Omit rows for tasks that succeeded on first attempt with no notable decisions.}
 
 ### Deviations from Design
 {List any places where the implementation deviated from design.md and why.
@@ -331,6 +456,12 @@ Keep each discovery under 100 words. Concise > comprehensive.
 
 See `own/skills/discovery-relay/SKILL.md` for the full protocol.
 
+## Critical Rules
+
+1. **Tool Call Budget Cap**: You have a maximum of **20 tool calls per task**. Track your tool call count. If you reach 15 calls without completing the task, STOP debugging/retrying, summarize what you accomplished, what failed, and what remains — then return to the orchestrator. Do NOT spiral into retry loops. A concise failure report is more valuable than burning context on hopeless retries.
+
+2. **Surgical Changes Only**: Every changed line MUST trace back to the user's request or the assigned task in `tasks.md`. Do NOT perform drive-by refactoring — no renaming unrelated variables, no reformatting untouched code, no "while I'm here" cleanups. If you notice unrelated issues, report them in your summary under "Issues Found" but do NOT fix them. The diff should contain ZERO surprises.
+
 ## Rules
 
 - ALWAYS read specs before implementing — specs are your acceptance criteria
@@ -348,3 +479,7 @@ See `own/skills/discovery-relay/SKILL.md` for the full protocol.
 - ALWAYS include discovered patterns in your apply-progress artifact (Ralph Loop compliance) — even if you think they are "obvious". The next sub-agent has zero context from your session.
 - When receiving Ralph Loop context from the orchestrator, treat discovered patterns as constraints — do NOT contradict them unless the specs explicitly say otherwise
 - NEVER include your full reasoning, debug traces, or tool call history in the progress artifact — only structured summaries. The goal is minimal, actionable context for the next fresh agent.
+- ALWAYS log each task attempt to `iterations.jsonl` AFTER the attempt completes (Step 3c) — this is non-negotiable for learning across sessions
+- ALWAYS check `iterations.jsonl` for previous failed approaches BEFORE starting a task — do NOT repeat reverted approaches
+- NEVER overwrite or edit existing lines in `iterations.jsonl` — it is append-only
+- If a task has 3+ reverted attempts in the log, STOP and report as BLOCKED — do not burn context on a 4th attempt
