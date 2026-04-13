@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: gentleman-programming
-  version: "2.0"
+  version: "2.1"
 ---
 
 ## Purpose
@@ -182,26 +182,124 @@ IF coverage_threshold is NOT configured:
 └── Skip this step, report as "Not configured"
 ```
 
-### Step 6: Spec Compliance Matrix (Behavioral Validation)
+### Step 5e: Goal-Driven Verification with Fitness Functions
 
-This is the most important step. Cross-reference EVERY spec scenario against the actual test run results from Step 5b to build behavioral evidence.
+Before building the compliance matrix, transform each spec requirement into a **concrete, executable fitness function** — a measurable criterion that can be scored, iterated, and converged upon. This ensures verification is objective, reproducible, and self-correcting.
 
-For each scenario from the specs, find which test(s) cover it and what the result was:
+#### 5e.1: Extract Fitness Functions from Specs
 
 ```
 FOR EACH REQUIREMENT in specs/:
   FOR EACH SCENARIO:
-  ├── Find tests that cover this scenario (by name, description, or file path)
-  ├── Look up that test's result from Step 5b output
-  ├── Assign compliance status:
-  │   ├── ✅ COMPLIANT   → test exists AND passed
-  │   ├── ❌ FAILING     → test exists BUT failed (CRITICAL)
-  │   ├── ❌ UNTESTED    → no test found for this scenario (CRITICAL)
-  │   └── ⚠️ PARTIAL    → test exists, passes, but covers only part of the scenario (WARNING)
-  └── Record: requirement, scenario, test file, test name, result
+  ├── Transform imperative description → declarative fitness function
+  │   Example: "User can log in with email" →
+  │     GOAL: POST /auth/login returns 200 with token
+  │     FITNESS: { name: "auth-login", weight: 1.0, check: "test assertion", threshold: "pass" }
+  │
+  ├── Define the fitness function:
+  │   ├── name:      unique identifier (kebab-case, e.g., "req01-login-success")
+  │   ├── weight:    relative importance (1.0 = normal, 2.0 = critical, 0.5 = nice-to-have)
+  │   ├── check_type: one of: test_assertion, grep_assertion, file_existence, type_check, build_check, runtime_check
+  │   ├── command:   the executable command to run
+  │   ├── threshold: "pass" (binary) or a numeric threshold (e.g., ">= 80%")
+  │   └── max_score: points awarded when fully passing (default: weight × 100)
+  │
+  ├── Create executable check (pick the most appropriate):
+  │   ├── Test assertion  → "{test_command} --filter '{test name}'" exits 0
+  │   ├── Grep assertion  → file X contains pattern Y (rg "pattern" path)
+  │   ├── File existence  → path/to/expected/file.ext exists
+  │   ├── Type check      → tsc --noEmit exits 0 (no type errors in changed files)
+  │   ├── Build check     → build command exits 0
+  │   └── Runtime check   → command X produces output matching Y
+  │
+  └── Each fitness function produces a score:
+      ├── 1.0  → fully passing (✅ COMPLIANT)
+      ├── 0.5  → partially passing (⚠️ PARTIAL)
+      ├── 0.0  → failing (❌ FAILING)
+      └── null → no check constructed (❌ UNTESTED)
 ```
 
-A spec scenario is only considered COMPLIANT when there is a test that passed proving the behavior at runtime. Code existing in the codebase is NOT sufficient evidence.
+#### 5e.2: Converge Loop (Measure → Diagnose → Act → Verify)
+
+After defining all fitness functions, run a **converge loop** that iterates until the aggregate score meets the threshold or max iterations are reached.
+
+```
+CONVERGE LOOP CONFIGURATION:
+├── score_threshold: 0.9 (default — 90% weighted score to pass)
+│   Override via: openspec/config.yaml → rules.verify.fitness_threshold
+├── max_iterations: 3 (default — prevent infinite loops)
+│   Override via: openspec/config.yaml → rules.verify.max_fitness_iterations
+└── Tool call budget: shared with the global 20-call cap
+
+FOR iteration IN 1..max_iterations:
+  │
+  ├── MEASURE: Execute ALL fitness functions
+  │   ├── Run each check command
+  │   ├── Record: exit code, output snippet, score (0.0 / 0.5 / 1.0 / null)
+  │   └── Calculate weighted aggregate score:
+  │       aggregate = sum(score_i × weight_i) / sum(weight_i) for non-null scores
+  │
+  ├── CHECK CONVERGENCE:
+  │   ├── If aggregate >= score_threshold → STOP, mark as CONVERGED
+  │   ├── If iteration == max_iterations → STOP, mark as MAX_ITERATIONS_REACHED
+  │   └── If all failing checks are UNTESTED (null) → STOP, cannot improve by iteration
+  │
+  ├── DIAGNOSE: For each failing fitness function (score < 1.0):
+  │   ├── Identify root cause from command output
+  │   ├── Classify: missing_implementation | incorrect_behavior | missing_test | build_error | flaky
+  │   └── Determine if the issue is fixable within verification scope
+  │       (verification does NOT fix code — it only re-runs checks after external fixes)
+  │
+  └── ACT: Report failing functions with diagnosis
+      ├── List each failing fitness function with: name, current_score, diagnosis, suggested_fix
+      └── NOTE: The verify agent does NOT fix code. The "act" step produces a
+          diagnosis report that the orchestrator can use to dispatch sdd-apply
+          for targeted fixes. If the orchestrator re-launches verify after fixes,
+          the next iteration picks up where it left off.
+```
+
+**Key principle**: Every spec requirement should have at least ONE executable fitness function. If you cannot construct one, flag it as `❌ UNTESTED` with the reason — this is a verification gap that must be addressed.
+
+#### 5e.3: Fitness Score Report
+
+After the converge loop completes, include this section in the verification report:
+
+```markdown
+### Fitness Functions
+
+**Aggregate Score**: {score}% ({converged | max_iterations_reached | cannot_improve})
+**Iterations**: {N}/{max}
+**Threshold**: {threshold}%
+
+| # | Fitness Function | Weight | Check Type | Score | Status |
+|---|-----------------|--------|------------|-------|--------|
+| 1 | {name} | {weight} | {check_type} | {score}/1.0 | ✅ / ⚠️ / ❌ |
+| 2 | {name} | {weight} | {check_type} | {score}/1.0 | ✅ / ⚠️ / ❌ |
+
+**Diagnosis (failing functions only)**:
+- `{name}`: {root_cause_classification} — {description}. Suggested fix: {suggestion}
+```
+
+### Step 6: Spec Compliance Matrix (Behavioral Validation)
+
+This is the most important step. Cross-reference EVERY spec scenario against the fitness function results from Step 5e AND the test run results from Step 5b to build behavioral evidence.
+
+For each scenario from the specs, use the fitness function score and test results as evidence:
+
+```
+FOR EACH REQUIREMENT in specs/:
+  FOR EACH SCENARIO:
+  ├── Use the fitness function score from Step 5e as primary evidence
+  ├── Cross-reference with test results from Step 5b
+  ├── Assign compliance status:
+  │   ├── ✅ COMPLIANT   → fitness function score == 1.0 AND/OR test exists AND passed
+  │   ├── ❌ FAILING     → fitness function score == 0.0 or test failed (CRITICAL)
+  │   ├── ❌ UNTESTED    → fitness function score is null and no test found (CRITICAL)
+  │   └── ⚠️ PARTIAL    → fitness function score == 0.5 or test passes partially (WARNING)
+  └── Record: requirement, scenario, fitness_function, score, verification method, result
+```
+
+A spec scenario is only considered COMPLIANT when a fitness function scored 1.0 or a test that covers it passed at runtime. Code existing in the codebase is NOT sufficient evidence.
 
 ### Step 7: Persist Verification Report
 
@@ -250,14 +348,30 @@ Return to the orchestrator the same content you wrote to `verify-report.md`:
 
 ---
 
+### Fitness Functions
+
+**Aggregate Score**: {score}% ({converged | max_iterations_reached | cannot_improve})
+**Iterations**: {N}/{max}
+**Threshold**: {threshold}%
+
+| # | Fitness Function | Weight | Check Type | Score | Status |
+|---|-----------------|--------|------------|-------|--------|
+| 1 | {name} | {weight} | {check_type} | {score}/1.0 | ✅ PASS / ⚠️ PARTIAL / ❌ FAIL |
+
+{If any functions failed:}
+**Diagnosis**:
+- `{name}`: {classification} — {description}. Suggested fix: {suggestion}
+
+---
+
 ### Spec Compliance Matrix
 
-| Requirement | Scenario | Test | Result |
-|-------------|----------|------|--------|
-| {REQ-01: name} | {Scenario name} | `{test file} > {test name}` | ✅ COMPLIANT |
-| {REQ-01: name} | {Scenario name} | `{test file} > {test name}` | ❌ FAILING |
-| {REQ-02: name} | {Scenario name} | (none found) | ❌ UNTESTED |
-| {REQ-02: name} | {Scenario name} | `{test file} > {test name}` | ⚠️ PARTIAL |
+| Requirement | Scenario | Fitness Function | Score | Verification Method | Command/Test | Result |
+|-------------|----------|-----------------|-------|-------------------|-------------|--------|
+| {REQ-01: name} | {Scenario name} | {fn-name} | 1.0 | test assertion | `{test file} > {test name}` | ✅ COMPLIANT |
+| {REQ-01: name} | {Scenario name} | {fn-name} | 0.0 | grep assertion | `rg "pattern" path/to/file` | ❌ FAILING |
+| {REQ-02: name} | {Scenario name} | — | null | (none constructed) | — | ❌ UNTESTED |
+| {REQ-02: name} | {Scenario name} | {fn-name} | 0.5 | file existence | `path/to/file.ext exists` | ⚠️ PARTIAL |
 
 **Compliance summary**: {N}/{total} scenarios compliant
 
@@ -295,9 +409,14 @@ Return to the orchestrator the same content you wrote to `verify-report.md`:
 
 ### Verdict
 {PASS / PASS WITH WARNINGS / FAIL}
+**Fitness Score**: {aggregate}% (threshold: {threshold}%)
 
 {One-line summary of overall status}
 ```
+
+## Critical Rules
+
+1. **Tool Call Budget Cap**: You have a maximum of **20 tool calls per verification run**. Track your tool call count. If you reach 15 calls without completing verification, STOP, summarize what you verified so far, what remains unchecked, and return to the orchestrator. Do NOT spiral into retry loops chasing flaky tests or build errors. A partial verification report with clear "NOT VERIFIED" markers is more useful than an exhausted context window.
 
 ## Rules
 
@@ -310,6 +429,8 @@ Return to the orchestrator the same content you wrote to `verify-report.md`:
 - WARNINGS = should fix but won't block
 - SUGGESTIONS = improvements, not blockers
 - DO NOT fix any issues — only report them. The orchestrator decides what to do.
+- EVERY spec scenario MUST have a declarative executable check — if you cannot construct one, flag it as a verification gap
+- Prefer concrete executable checks (exit codes, grep matches, file existence) over subjective "looks correct" assessments
 - In `openspec` mode, ALWAYS save the report to `openspec/changes/{change-name}/verify-report.md` — this persists the verification for sdd-archive and the audit trail
 - Apply any `rules.verify` from `openspec/config.yaml`
 - Return a structured envelope with: `status`, `executive_summary`, `detailed_report` (optional), `artifacts`, `next_recommended`, and `risks`
