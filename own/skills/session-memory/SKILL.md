@@ -6,7 +6,7 @@ description: >
 license: MIT
 metadata:
   author: gentleman-programming
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Session Memory & Toolset Profiles
@@ -106,6 +106,71 @@ Restrict tools by work mode. Principle: **least privilege for AI tools**.
 > @reference references/code-examples.md — Load when implementing the memory parser (Python), /remember handler (shell), toolset enforcer hook, or session init script
 
 > @reference references/patterns.md — Load when integrating with Engram, domain orchestrators, SDD workflow, or reviewing anti-patterns
+
+---
+
+## 5. Brain-First Loop (Mandatory Pre-Response Memory Search)
+
+Before answering ANY substantive question or starting ANY task, the agent MUST search memory for relevant context. This prevents re-discovering known information, contradicting past decisions, and repeating resolved mistakes.
+
+### Protocol
+
+```
+USER INPUT arrives
+  │
+  ├── Is this a trivial interaction? (greeting, "yes", "no", "continue")
+  │     └── YES → Skip brain-first, respond directly
+  │
+  └── NO → Execute Brain-First Loop:
+        │
+        Step 1: Extract search terms from user input
+        │   - Key nouns, technical terms, file names, feature names
+        │   - Current SDD change name (if in SDD flow)
+        │
+        Step 2: Search engram for relevant memories
+        │   mem_search(query: "{extracted terms}", project: "{project}", limit: 5)
+        │
+        Step 3: Search session memory (.ai-memory/session.md)
+        │   - Scan for matching categories (Decisions, Gotchas, Patterns)
+        │
+        Step 4: Integrate findings into response context
+        │   - If memories found: incorporate into reasoning BEFORE generating response
+        │   - If conflict with user claim: cite the memory as evidence
+        │   - If no memories found: proceed normally (absence is fine)
+        │
+        └── Respond with memory-informed answer
+```
+
+### What Triggers Brain-First
+
+| Input Type | Search? | Search Terms |
+|-----------|---------|-------------|
+| Question about architecture | YES | architecture keywords + component names |
+| Task/feature request | YES | feature name + related modules |
+| Bug report | YES | error keywords + affected files |
+| "How do we..." | YES | the topic being asked about |
+| SDD command | YES | change name + phase-specific context |
+| "yes", "continue", "dale" | NO | N/A |
+| Greeting | NO | N/A |
+
+### Integration with SDD
+
+During SDD phases, brain-first search includes phase-specific queries:
+
+```
+SDD Explore: mem_search("sdd/{change}/explore") — check for prior explorations
+SDD Propose: mem_search("sdd/{change}/proposal") — check for existing proposals
+SDD Apply:   mem_search("sdd/{change}/apply-progress") — check for partial progress
+SDD Verify:  mem_search("sdd/{change}/verify-report") — check for prior verification
+```
+
+### Rules
+
+1. Brain-first is a SHOULD, not a hard block — if engram is unavailable, proceed without it
+2. Never show raw memory search results to the user — integrate silently into your reasoning
+3. If a memory contradicts the user's claim, cite it: "Based on a previous decision stored on {date}, we decided X because Y"
+4. Keep searches focused — max 2-3 mem_search calls per brain-first cycle, not 10
+5. Cache-friendly: if you already searched for a topic in this conversation, don't re-search it
 
 ---
 
