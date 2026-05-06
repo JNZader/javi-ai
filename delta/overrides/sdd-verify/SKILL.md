@@ -301,6 +301,30 @@ FOR EACH REQUIREMENT in specs/:
 
 A spec scenario is only considered COMPLIANT when a fitness function scored 1.0 or a test that covers it passed at runtime. Code existing in the codebase is NOT sufficient evidence.
 
+### Step 6b: SDD-DoD Shape Checklist (Quality Gate)
+
+Before persisting the verification report, run the `sdd-dod` skill to enforce
+the Definition-of-Done shape checklists. These checklists capture
+hard-earned lessons from real shipped bugs (DTO drop-on-floor, sidebar
+wiring missed, CHECK constraint inversion, React 19 SyntheticEvent
+antipattern) and gate the archive against repeating them.
+
+```
+Read: own/skills/sdd-dod/SKILL.md
+Detect shape(s) for the change (see SKILL.md Step 2)
+For each detected shape:
+├── Walk the shape checklist at shapes/{shape}.md
+├── Mark each item ✅ / ❌ / ⚠️
+└── For ❌ items: link FIX commit OR add to Open Items in the verify-report
+Persist a separate dod-report artifact (topic_key:
+    sdd/{change-name}/dod-report)
+If ANY ❌ remains without fix-or-deferral → return status: blocked,
+    DO NOT proceed to Step 7.
+```
+
+The DoD report is a separate artifact from the verify-report. Both
+persist; verify-report references the DoD report by topic_key.
+
 ### Step 7: Persist Verification Report
 
 Persist the report according to the resolved `artifact_store.mode`, following the conventions in `skills/_shared/`:
