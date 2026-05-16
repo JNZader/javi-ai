@@ -12,6 +12,32 @@ import { installSkillsForCLI } from "./skills.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_ROOT = path.resolve(__dirname, "../../");
 
+const CONFIG_DESTINATION_OVERRIDES: Partial<
+	Record<CLI, Record<string, string>>
+> = {
+	codex: {
+		"codex-config.toml": "config.toml",
+	},
+	gemini: {
+		"gemini-settings.json": "settings.json",
+	},
+	copilot: {
+		"base-rules.instructions.md": path.join(
+			"instructions",
+			"base-rules.instructions.md",
+		),
+		"sdd-orchestrator.instructions.md": path.join(
+			"instructions",
+			"sdd-orchestrator.instructions.md",
+		),
+		"sdd-orchestrator-copilot.md": path.join("agents", "sdd-orchestrator.md"),
+	},
+};
+
+function resolveConfigDestination(cli: CLI, file: string): string {
+	return CONFIG_DESTINATION_OVERRIDES[cli]?.[file] ?? file;
+}
+
 export async function runInstall(
 	options: InstallOptions,
 	onStep: (step: InstallStep) => void,
@@ -187,8 +213,9 @@ async function installConfig(
 		const stat = await fs.stat(src);
 		if (stat.isDirectory()) continue;
 
-		const dest = path.join(configPath, file);
-		const backup = path.join(backupDir, cli, file);
+		const destinationFile = resolveConfigDestination(cli, file);
+		const dest = path.join(configPath, destinationFile);
+		const backup = path.join(backupDir, cli, destinationFile);
 
 		if (dryRun) continue;
 

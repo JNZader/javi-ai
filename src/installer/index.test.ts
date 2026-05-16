@@ -41,6 +41,12 @@ function getPaths() {
 		OPENCODE_SKILLS: path.join(t, "opencode-skills"),
 		GEMINI_CONFIG: path.join(t, "gemini-config"),
 		GEMINI_SKILLS: path.join(t, "gemini-skills"),
+		QWEN_CONFIG: path.join(t, "qwen-config"),
+		QWEN_SKILLS: path.join(t, "qwen-skills"),
+		CODEX_CONFIG: path.join(t, "codex-config"),
+		CODEX_SKILLS: path.join(t, "codex-skills"),
+		COPILOT_CONFIG: path.join(t, "copilot-config"),
+		COPILOT_SKILLS: path.join(t, "copilot-skills"),
 	};
 }
 
@@ -83,6 +89,30 @@ vi.mock("../constants.js", () => ({
 				configPath: p.GEMINI_CONFIG,
 				skillsPath: p.GEMINI_SKILLS,
 				pluginsPath: p.GEMINI_CONFIG + "/plugins",
+				available: true,
+			},
+			{
+				id: "qwen",
+				label: "Qwen",
+				configPath: p.QWEN_CONFIG,
+				skillsPath: p.QWEN_SKILLS,
+				pluginsPath: p.QWEN_CONFIG + "/plugins",
+				available: true,
+			},
+			{
+				id: "codex",
+				label: "Codex CLI",
+				configPath: p.CODEX_CONFIG,
+				skillsPath: p.CODEX_SKILLS,
+				pluginsPath: p.CODEX_CONFIG + "/plugins",
+				available: true,
+			},
+			{
+				id: "copilot",
+				label: "GitHub Copilot",
+				configPath: p.COPILOT_CONFIG,
+				skillsPath: p.COPILOT_SKILLS,
+				pluginsPath: p.COPILOT_CONFIG + "/plugins",
 				available: true,
 			},
 		];
@@ -822,6 +852,100 @@ describe("runInstall — installConfig file dispatch", () => {
 		// Should be copied (create-if-absent)
 		expect(await fs.pathExists(path.join(p.CLAUDE_CONFIG, "config.sh"))).toBe(
 			true,
+		);
+	});
+
+	it("codex config maps codex-config.toml → config.toml", async () => {
+		const p = getPaths();
+		const configSrc = path.join(FIXED_ASSETS_ROOT, "configs", "codex");
+		await fs.ensureDir(configSrc);
+		await fs.writeFile(
+			path.join(configSrc, "codex-config.toml"),
+			'model = "gpt-5.3-codex"',
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["codex"], features: ["configs"], dryRun: false }),
+			onStep,
+		);
+
+		expect(await fs.pathExists(path.join(p.CODEX_CONFIG, "config.toml"))).toBe(
+			true,
+		);
+		expect(
+			await fs.pathExists(path.join(p.CODEX_CONFIG, "codex-config.toml")),
+		).toBe(false);
+	});
+
+	it("gemini config maps gemini-settings.json → settings.json", async () => {
+		const p = getPaths();
+		const configSrc = path.join(FIXED_ASSETS_ROOT, "configs", "gemini");
+		await fs.ensureDir(configSrc);
+		await fs.writeFile(
+			path.join(configSrc, "gemini-settings.json"),
+			'{"output":{"codeStyle":"fenced"}}',
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["gemini"], features: ["configs"], dryRun: false }),
+			onStep,
+		);
+
+		expect(mockMergeJson).toHaveBeenCalledWith(
+			path.join(p.GEMINI_CONFIG, "settings.json"),
+			path.join(configSrc, "gemini-settings.json"),
+			undefined,
+		);
+	});
+
+	it("copilot config maps instructions and orchestrator to active subdirs", async () => {
+		const p = getPaths();
+		const configSrc = path.join(FIXED_ASSETS_ROOT, "configs", "copilot");
+		await fs.ensureDir(configSrc);
+		await fs.writeFile(
+			path.join(configSrc, "base-rules.instructions.md"),
+			"# Base Rules",
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(configSrc, "sdd-orchestrator.instructions.md"),
+			"# SDD Instructions",
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(configSrc, "sdd-orchestrator-copilot.md"),
+			"# SDD Agent",
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["copilot"], features: ["configs"], dryRun: false }),
+			onStep,
+		);
+
+		expect(mockMergeMarkdown).toHaveBeenCalledWith(
+			path.join(p.COPILOT_CONFIG, "instructions", "base-rules.instructions.md"),
+			path.join(configSrc, "base-rules.instructions.md"),
+			undefined,
+		);
+		expect(mockMergeMarkdown).toHaveBeenCalledWith(
+			path.join(
+				p.COPILOT_CONFIG,
+				"instructions",
+				"sdd-orchestrator.instructions.md",
+			),
+			path.join(configSrc, "sdd-orchestrator.instructions.md"),
+			undefined,
+		);
+		expect(mockMergeMarkdown).toHaveBeenCalledWith(
+			path.join(p.COPILOT_CONFIG, "agents", "sdd-orchestrator.md"),
+			path.join(configSrc, "sdd-orchestrator-copilot.md"),
+			undefined,
 		);
 	});
 

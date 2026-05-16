@@ -34,7 +34,7 @@ OpenCode uses its own agent format. Orchestrators are installed as standalone ag
 | CLI flag | `--cli gemini` |
 | Config path | `~/.gemini/` |
 | Skills path | `~/.gemini/skills/` |
-| Config files | `gemini-settings.json` |
+| Config files | `settings.json` (from `configs/gemini/gemini-settings.json`) |
 | Orchestrators | Unified instructions |
 
 ## Qwen
@@ -54,7 +54,7 @@ OpenCode uses its own agent format. Orchestrators are installed as standalone ag
 | CLI flag | `--cli codex` |
 | Config path | `~/.codex/` |
 | Skills path | `~/.codex/skills/` |
-| Config files | `codex-config.toml` |
+| Config files | `config.toml` (from `configs/codex/codex-config.toml`) |
 | Orchestrators | Unified instructions |
 
 ## GitHub Copilot
@@ -64,7 +64,7 @@ OpenCode uses its own agent format. Orchestrators are installed as standalone ag
 | CLI flag | `--cli copilot` |
 | Config path | `~/.copilot/` |
 | Skills path | `~/.copilot/skills/` |
-| Config files | `copilot-instructions.md`, SDD orchestrator |
+| Config files | `instructions/*.instructions.md`, `agents/sdd-orchestrator.md` |
 | Orchestrators | Unified instructions |
 
 ## Sync Target Mapping

@@ -96,8 +96,8 @@ const CONFIG_FILES: Array<{ cli: CLI; label: string; filePath: string }> = [
 	},
 	{
 		cli: "gemini",
-		label: "~/.gemini/GEMINI.md",
-		filePath: path.join(process.env["HOME"] ?? "~", ".gemini", "GEMINI.md"),
+		label: "~/.gemini/settings.json",
+		filePath: path.join(process.env["HOME"] ?? "~", ".gemini", "settings.json"),
 	},
 	{
 		cli: "qwen",
@@ -106,13 +106,38 @@ const CONFIG_FILES: Array<{ cli: CLI; label: string; filePath: string }> = [
 	},
 	{
 		cli: "codex",
-		label: "~/.codex/AGENTS.md",
-		filePath: path.join(process.env["HOME"] ?? "~", ".codex", "AGENTS.md"),
+		label: "~/.codex/config.toml",
+		filePath: path.join(process.env["HOME"] ?? "~", ".codex", "config.toml"),
 	},
 	{
 		cli: "copilot",
-		label: "~/.copilot/COPILOT.md",
-		filePath: path.join(process.env["HOME"] ?? "~", ".copilot", "COPILOT.md"),
+		label: "~/.copilot/instructions/base-rules.instructions.md",
+		filePath: path.join(
+			process.env["HOME"] ?? "~",
+			".copilot",
+			"instructions",
+			"base-rules.instructions.md",
+		),
+	},
+	{
+		cli: "copilot",
+		label: "~/.copilot/instructions/sdd-orchestrator.instructions.md",
+		filePath: path.join(
+			process.env["HOME"] ?? "~",
+			".copilot",
+			"instructions",
+			"sdd-orchestrator.instructions.md",
+		),
+	},
+	{
+		cli: "copilot",
+		label: "~/.copilot/agents/sdd-orchestrator.md",
+		filePath: path.join(
+			process.env["HOME"] ?? "~",
+			".copilot",
+			"agents",
+			"sdd-orchestrator.md",
+		),
 	},
 ];
 
