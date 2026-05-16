@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "package:check": "npm pack --dry-run --json --cache /tmp/javi-ai-npm-pack-cache > /tmp/javi-ai-pack.json && node scripts/verify-package-contents.mjs /tmp/javi-ai-pack.json"
   },
   "keywords": [
     "ai",
@@ -53,5 +54,15 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
-  }
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "configs/",
+    "upstream/",
+    "delta/",
+    "own/",
+    "README.md",
+    "LICENSE*"
+  ]
 }
