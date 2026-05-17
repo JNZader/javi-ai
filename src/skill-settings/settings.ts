@@ -35,6 +35,10 @@ export interface SkillSettings {
 
 // ── Parsing ──
 
+function isSettingsRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
  * Parse setting definitions from a SKILL.md frontmatter 'settings' field.
  * Supports simplified inline format: STRICTNESS: 5 (defaults to number)
@@ -193,10 +197,8 @@ export async function loadSkillSettings(
 	if (await fs.pathExists(skillMd)) {
 		const raw = await fs.readFile(skillMd, "utf-8");
 		const fm = parseFrontmatter(raw);
-		if (fm?.data.settings && typeof fm.data.settings === "object") {
-			definitions = parseSettingDefinitions(
-				fm.data.settings as Record<string, unknown>,
-			);
+		if (isSettingsRecord(fm?.data.settings)) {
+			definitions = parseSettingDefinitions(fm.data.settings);
 		}
 	}
 

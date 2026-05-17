@@ -18,10 +18,11 @@ export function resolveDependencyOrder(
 	availableSkills: Map<string, SkillManifest>,
 ): { ordered: string[]; missing: string[] } {
 	const missing: string[] = [];
-	const graph = new Map<string, string[]>(); // skill → its deps
+	const dependenciesBySkill = new Map<string, string[]>();
+	const dependentsBySkill = new Map<string, string[]>();
 	const inDegree = new Map<string, number>();
 
-	// Build graph for requested skills + their transitive deps
+	// Build graph for requested skills + their transitive deps.
 	const toVisit = [...requested];
 	const visited = new Set<string>();
 
@@ -33,31 +34,33 @@ export function resolveDependencyOrder(
 		const manifest = availableSkills.get(skill);
 		if (!manifest) {
 			missing.push(skill);
-			graph.set(skill, []);
+			dependenciesBySkill.set(skill, []);
 			inDegree.set(skill, inDegree.get(skill) ?? 0);
 			continue;
 		}
 
-		const deps = (manifest.dependencies ?? []).filter((d) => {
-			if (!availableSkills.has(d)) {
-				missing.push(d);
+		const deps = (manifest.dependencies ?? []).filter((dep) => {
+			if (!availableSkills.has(dep)) {
+				missing.push(dep);
 				return false;
 			}
 			return true;
 		});
 
-		graph.set(skill, deps);
-		inDegree.set(skill, inDegree.get(skill) ?? 0);
+		dependenciesBySkill.set(skill, deps);
+		inDegree.set(skill, deps.length);
 
 		for (const dep of deps) {
-			inDegree.set(dep, (inDegree.get(dep) ?? 0) + 1);
+			if (!dependentsBySkill.has(dep)) dependentsBySkill.set(dep, []);
+			dependentsBySkill.get(dep)!.push(skill);
+			if (!inDegree.has(dep)) inDegree.set(dep, 0);
 			toVisit.push(dep);
 		}
 	}
 
-	// Kahn's algorithm
+	// Kahn's algorithm: start with nodes that have no dependencies.
 	const queue = [...inDegree.entries()]
-		.filter(([, deg]) => deg === 0)
+		.filter(([skill, degree]) => degree === 0 && visited.has(skill))
 		.map(([skill]) => skill);
 
 	const ordered: string[] = [];
@@ -66,18 +69,16 @@ export function resolveDependencyOrder(
 		const skill = queue.shift()!;
 		ordered.push(skill);
 
-		for (const dependent of [...graph.entries()]
-			.filter(([, deps]) => deps.includes(skill))
-			.map(([s]) => s)) {
-			const newDeg = (inDegree.get(dependent) ?? 1) - 1;
-			inDegree.set(dependent, newDeg);
-			if (newDeg === 0) queue.push(dependent);
+		for (const dependent of dependentsBySkill.get(skill) ?? []) {
+			const newDegree = (inDegree.get(dependent) ?? 1) - 1;
+			inDegree.set(dependent, newDegree);
+			if (newDegree === 0) queue.push(dependent);
 		}
 	}
 
-	// Cycle detection
+	// Cycle detection.
 	if (ordered.length < visited.size) {
-		const cycle = [...visited].filter((s) => !ordered.includes(s));
+		const cycle = [...visited].filter((skill) => !ordered.includes(skill));
 		throw new CircularDependencyError(cycle);
 	}
 
