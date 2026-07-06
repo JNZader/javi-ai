@@ -20,7 +20,7 @@ npx javi-dots
 | CLI | Config Path | Skills Path |
 |-----|-------------|-------------|
 | **Claude Code** | `~/.claude/` | `~/.claude/skills/` |
-| **OpenCode** | `~/.config/opencode/` | `~/.config/opencode/skill/` |
+| **OpenCode** | `~/.config/opencode/` | `~/.config/opencode/skills/` |
 | **Gemini CLI** | `~/.gemini/` | `~/.gemini/skills/` |
 | **Qwen** | `~/.qwen/` | `~/.qwen/skills/` |
 | **Codex CLI** | `~/.codex/` | `~/.codex/skills/` |

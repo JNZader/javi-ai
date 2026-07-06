@@ -21,7 +21,7 @@ Claude Code gets the most complete setup: skills, configs, orchestrators, hooks,
 |----------|-------|
 | CLI flag | `--cli opencode` |
 | Config path | `~/.config/opencode/` |
-| Skills path | `~/.config/opencode/skill/` |
+| Skills path | `~/.config/opencode/skills/` |
 | Config files | `opencode.json`, theme |
 | Orchestrators | 13 standalone agents, 6 domain agents, 8 SDD commands |
 

@@ -17,7 +17,7 @@ export const CLI_OPTIONS: CLIOption[] = [
 		id: "opencode",
 		label: "OpenCode",
 		configPath: path.join(HOME, ".config", "opencode"),
-		skillsPath: path.join(HOME, ".config", "opencode", "skill"),
+		skillsPath: path.join(HOME, ".config", "opencode", "skills"),
 		pluginsPath: path.join(HOME, ".config", "opencode", "plugins"),
 		available: true,
 	},

@@ -36,7 +36,7 @@ const TEST_OPTIONS: CLIOption[] = [
 		id: "opencode",
 		label: "OpenCode",
 		configPath: "/home/test/.config/opencode",
-		skillsPath: "/home/test/.config/opencode/skill",
+		skillsPath: "/home/test/.config/opencode/skills",
 		pluginsPath: "/home/test/.config/opencode/plugins",
 		available: true,
 	},
