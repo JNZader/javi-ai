@@ -77,69 +77,72 @@ async function countExpectedSkills(): Promise<number> {
 	return names.size;
 }
 
-/** Config files that javi-ai manages per CLI */
-const CONFIG_FILES: Array<{ cli: CLI; label: string; filePath: string }> = [
-	{
-		cli: "claude",
-		label: "~/.claude/CLAUDE.md",
-		filePath: path.join(process.env["HOME"] ?? "~", ".claude", "CLAUDE.md"),
-	},
-	{
-		cli: "opencode",
-		label: "~/.config/opencode/opencode.json",
-		filePath: path.join(
-			process.env["HOME"] ?? "~",
-			".config",
-			"opencode",
-			"opencode.json",
-		),
-	},
-	{
-		cli: "gemini",
-		label: "~/.gemini/settings.json",
-		filePath: path.join(process.env["HOME"] ?? "~", ".gemini", "settings.json"),
-	},
-	{
-		cli: "qwen",
-		label: "~/.qwen/QWEN.md",
-		filePath: path.join(process.env["HOME"] ?? "~", ".qwen", "QWEN.md"),
-	},
-	{
-		cli: "codex",
-		label: "~/.codex/config.toml",
-		filePath: path.join(process.env["HOME"] ?? "~", ".codex", "config.toml"),
-	},
-	{
-		cli: "copilot",
-		label: "~/.copilot/instructions/base-rules.instructions.md",
-		filePath: path.join(
-			process.env["HOME"] ?? "~",
-			".copilot",
-			"instructions",
-			"base-rules.instructions.md",
-		),
-	},
-	{
-		cli: "copilot",
-		label: "~/.copilot/instructions/sdd-orchestrator.instructions.md",
-		filePath: path.join(
-			process.env["HOME"] ?? "~",
-			".copilot",
-			"instructions",
-			"sdd-orchestrator.instructions.md",
-		),
-	},
-	{
-		cli: "copilot",
-		label: "~/.copilot/agents/sdd-orchestrator.md",
-		filePath: path.join(
-			process.env["HOME"] ?? "~",
-			".copilot",
-			"agents",
-			"sdd-orchestrator.md",
-		),
-	},
-];
+/**
+ * Config files that javi-ai manages per CLI.
+ *
+ * Resolve HOME at CALL time, not module-import time. Integration tests swap
+ * HOME/USERPROFILE per sandbox; freezing these paths at import time makes the
+ * doctor read the wrong filesystem when the full suite runs.
+ */
+function getConfigFiles(): Array<{
+	cli: CLI;
+	label: string;
+	filePath: string;
+}> {
+	const home = process.env["HOME"] ?? "~";
+	return [
+		{
+			cli: "claude",
+			label: "~/.claude/CLAUDE.md",
+			filePath: path.join(home, ".claude", "CLAUDE.md"),
+		},
+		{
+			cli: "opencode",
+			label: "~/.config/opencode/opencode.json",
+			filePath: path.join(home, ".config", "opencode", "opencode.json"),
+		},
+		{
+			cli: "gemini",
+			label: "~/.gemini/settings.json",
+			filePath: path.join(home, ".gemini", "settings.json"),
+		},
+		{
+			cli: "qwen",
+			label: "~/.qwen/QWEN.md",
+			filePath: path.join(home, ".qwen", "QWEN.md"),
+		},
+		{
+			cli: "codex",
+			label: "~/.codex/config.toml",
+			filePath: path.join(home, ".codex", "config.toml"),
+		},
+		{
+			cli: "copilot",
+			label: "~/.copilot/instructions/base-rules.instructions.md",
+			filePath: path.join(
+				home,
+				".copilot",
+				"instructions",
+				"base-rules.instructions.md",
+			),
+		},
+		{
+			cli: "copilot",
+			label: "~/.copilot/instructions/sdd-orchestrator.instructions.md",
+			filePath: path.join(
+				home,
+				".copilot",
+				"instructions",
+				"sdd-orchestrator.instructions.md",
+			),
+		},
+		{
+			cli: "copilot",
+			label: "~/.copilot/agents/sdd-orchestrator.md",
+			filePath: path.join(home, ".copilot", "agents", "sdd-orchestrator.md"),
+		},
+	];
+}
 
 export async function runDoctor(): Promise<DoctorResult> {
 	const manifest = await readManifest();
@@ -215,7 +218,7 @@ export async function runDoctor(): Promise<DoctorResult> {
 
 	// ── 4. Config Files ────────────────────────────────────────────────────────
 	const configChecks: DoctorCheck[] = [];
-	for (const { cli, label, filePath } of CONFIG_FILES) {
+	for (const { cli, label, filePath } of getConfigFiles()) {
 		if (!installedClis.has(cli)) {
 			configChecks.push({ label, status: "skip", detail: "not installed" });
 		} else {
