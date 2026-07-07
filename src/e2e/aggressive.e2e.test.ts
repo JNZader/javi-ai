@@ -155,7 +155,7 @@ describe("E2E Aggressive: install verification", () => {
 		expect(result.exitCode).toBe(0);
 
 		// Skills directory with ≥30 SKILL.md files
-		const skillsDir = path.join(sandbox, ".config", "opencode", "skill");
+		const skillsDir = path.join(sandbox, ".config", "opencode", "skills");
 		const skillCount = await countFiles(skillsDir, "SKILL.md");
 		expect(skillCount).toBeGreaterThanOrEqual(30);
 
@@ -220,7 +220,7 @@ describe("E2E Aggressive: install verification", () => {
 		);
 
 		// OpenCode skills
-		const opencodeSkills = path.join(sandbox, ".config", "opencode", "skill");
+		const opencodeSkills = path.join(sandbox, ".config", "opencode", "skills");
 		expect(await countFiles(opencodeSkills, "SKILL.md")).toBeGreaterThanOrEqual(
 			30,
 		);
@@ -249,7 +249,7 @@ describe("E2E Aggressive: install verification", () => {
 
 		const cliPaths: Record<string, string> = {
 			claude: path.join(sandbox, ".claude", "skills"),
-			opencode: path.join(sandbox, ".config", "opencode", "skill"),
+			opencode: path.join(sandbox, ".config", "opencode", "skills"),
 			gemini: path.join(sandbox, ".gemini", "skills"),
 			qwen: path.join(sandbox, ".qwen", "skills"),
 			codex: path.join(sandbox, ".codex", "skills"),

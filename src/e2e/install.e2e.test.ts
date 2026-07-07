@@ -123,7 +123,7 @@ describe("E2E: install", () => {
 		expect(result.exitCode).toBe(0);
 
 		// Skills path for opencode
-		const skillsDir = path.join(sandbox, ".config", "opencode", "skill");
+		const skillsDir = path.join(sandbox, ".config", "opencode", "skills");
 		expect(await fs.pathExists(skillsDir)).toBe(true);
 		const skillMdCount = await countFiles(skillsDir, "SKILL.md");
 		expect(skillMdCount).toBeGreaterThanOrEqual(30);
@@ -155,7 +155,7 @@ describe("E2E: install", () => {
 		expect(await fs.pathExists(claudeSkills)).toBe(true);
 
 		// OpenCode skills
-		const opencodeSkills = path.join(sandbox, ".config", "opencode", "skill");
+		const opencodeSkills = path.join(sandbox, ".config", "opencode", "skills");
 		expect(await fs.pathExists(opencodeSkills)).toBe(true);
 	}, 30_000);
 
