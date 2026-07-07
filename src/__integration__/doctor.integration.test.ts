@@ -75,11 +75,18 @@ vi.mock("../installer/manifest.js", () => ({
 import { runDoctor } from "../commands/doctor.js";
 
 describe("runDoctor() — integration", () => {
+	const originalHome = process.env.HOME;
+	const originalUserProfile = process.env.USERPROFILE;
+
 	beforeEach(async () => {
+		process.env.HOME = FIXED_HOME;
+		process.env.USERPROFILE = FIXED_HOME;
 		await fs.ensureDir(FIXED_HOME);
 	});
 
 	afterEach(async () => {
+		process.env.HOME = originalHome;
+		process.env.USERPROFILE = originalUserProfile;
 		await fs.remove(FIXED_ROOT);
 	});
 
