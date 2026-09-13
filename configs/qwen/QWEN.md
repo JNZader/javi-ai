@@ -3,7 +3,12 @@
 ## Rules
 
 - NEVER add "Co-Authored-By" or any AI attribution to commits. Use conventional commits format only.
-- Never build after changes.
+- Never run build after changes unless the user explicitly authorizes the exact build command for the current repo/change.
+- Prefer focused tests and typecheck before any build.
+- Treat tests and typecheck as validation commands; treat local build as a gated validation step that needs scoped authorization.
+- Build authorization is local-build-only: it does NOT authorize deploy, publish, release, Docker image build, Docker image push, committing generated artifacts, or any external side effect.
+- Docker build, Docker push, deploy, publish, and release each require separate explicit authorization.
+- Rationale: avoid generated artifacts, external side effects, dangerous package scripts, and verification placebo; allow a scoped local build only when a formal gate requires that evidence.
 - Never use cat/grep/find/sed/ls. Use bat/rg/fd/sd/eza instead. Install via brew if missing.
 - When asking user a question, STOP and wait for response. Never continue or assume answers.
 - Never agree with user claims without verification. Say "dejame verificar" and check code/docs first.
