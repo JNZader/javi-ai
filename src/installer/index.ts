@@ -12,6 +12,12 @@ import { installSkillsForCLI } from "./skills.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ASSETS_ROOT = path.resolve(__dirname, "../../");
 
+const GATE_ONLY_CLIS: readonly CLI[] = ["agy", "grok", "pi"];
+
+function isGateOnlyCli(cli: CLI): boolean {
+	return GATE_ONLY_CLIS.includes(cli);
+}
+
 const CONFIG_DESTINATION_OVERRIDES: Partial<
 	Record<CLI, Record<string, string>>
 > = {
@@ -49,8 +55,13 @@ export async function runInstall(
 		const cliOption = CLI_OPTIONS.find((c) => c.id === cli);
 		if (!cliOption) continue;
 
+		const gateOnly = isGateOnlyCli(cli);
+		const wantsGate =
+			options.features.includes("hooks") ||
+			options.features.includes("plugins");
+
 		// Skills
-		if (options.features.includes("skills")) {
+		if (options.features.includes("skills") && !gateOnly) {
 			onStep({
 				id: `${cli}-skills`,
 				label: `Installing skills for ${cliOption.label}`,
@@ -79,7 +90,7 @@ export async function runInstall(
 		}
 
 		// Configs
-		if (options.features.includes("configs")) {
+		if (options.features.includes("configs") && !gateOnly) {
 			onStep({
 				id: `${cli}-configs`,
 				label: `Installing config for ${cliOption.label}`,
@@ -107,24 +118,32 @@ export async function runInstall(
 			}
 		}
 
-		// Hooks (claude only for now)
-		if (options.features.includes("hooks") && cli === "claude") {
+		// Hooks (claude) or PreToolUse gate (agy/grok/pi)
+		if (
+			(cli === "claude" && options.features.includes("hooks")) ||
+			(gateOnly && wantsGate)
+		) {
 			onStep({
 				id: `${cli}-hooks`,
-				label: "Installing hooks for Claude Code",
+				label: `Installing hooks for ${cliOption.label}`,
 				status: "running",
 			});
 			try {
-				await installHooks(cliOption.configPath, options.dryRun);
+				await installHooks(
+					cli,
+					cliOption.configPath,
+					cliOption.pluginsPath,
+					options.dryRun,
+				);
 				onStep({
 					id: `${cli}-hooks`,
-					label: "Hooks for Claude Code",
+					label: `Hooks for ${cliOption.label}`,
 					status: "done",
 				});
 			} catch (e) {
 				onStep({
 					id: `${cli}-hooks`,
-					label: "Hooks for Claude Code",
+					label: `Hooks for ${cliOption.label}`,
 					status: "error",
 					detail: String(e),
 				});
@@ -132,7 +151,7 @@ export async function runInstall(
 		}
 
 		// Plugins
-		if (options.features.includes("plugins")) {
+		if (options.features.includes("plugins") && !gateOnly) {
 			onStep({
 				id: `${cli}-plugins`,
 				label: `Installing plugins for ${cliOption.label}`,
@@ -157,7 +176,7 @@ export async function runInstall(
 		}
 
 		// Orchestrators
-		if (options.features.includes("orchestrators")) {
+		if (options.features.includes("orchestrators") && !gateOnly) {
 			onStep({
 				id: `${cli}-orch`,
 				label: `Installing orchestrators for ${cliOption.label}`,
@@ -245,12 +264,37 @@ async function installConfig(
 const OVERWRITE_HOOK_FILES = new Set([
 	"security-guard.sh",
 	"pretooluse-runtime.mjs",
+	"evaluate-pretooluse.mjs",
 ]);
 
 async function installHooks(
+	cli: CLI,
 	configPath: string,
+	pluginsPath: string,
 	dryRun: boolean,
 ): Promise<void> {
+	if (cli === "agy") {
+		await copyGateDirectory(
+			path.join(ASSETS_ROOT, "own", "agy-plugins", "pretooluse-gate"),
+			path.join(pluginsPath, "pretooluse-gate"),
+			dryRun,
+		);
+		return;
+	}
+	if (cli === "grok") {
+		await copyGateDirectory(
+			path.join(ASSETS_ROOT, "own", "grok-plugins", "pretooluse-gate"),
+			path.join(pluginsPath, "pretooluse-gate"),
+			dryRun,
+		);
+		return;
+	}
+	if (cli === "pi") {
+		await installPiGate(pluginsPath, dryRun);
+		return;
+	}
+	if (cli !== "claude") return;
+
 	const hooksSrc = path.join(ASSETS_ROOT, "own", "hooks", "claude");
 	const hooksDest = path.join(configPath, "hooks");
 	if (!(await fs.pathExists(hooksSrc))) return;
@@ -264,6 +308,31 @@ async function installHooks(
 			await fs.copy(path.join(hooksSrc, file), dest);
 			await fs.chmod(dest, 0o755);
 		}
+	}
+}
+
+async function copyGateDirectory(
+	src: string,
+	dest: string,
+	dryRun: boolean,
+): Promise<void> {
+	if (!(await fs.pathExists(src))) return;
+	if (dryRun) return;
+	await fs.copy(src, dest, { overwrite: true });
+}
+
+async function installPiGate(
+	pluginsPath: string,
+	dryRun: boolean,
+): Promise<void> {
+	const srcDir = path.join(ASSETS_ROOT, "own", "pi-extensions");
+	if (!(await fs.pathExists(srcDir))) return;
+	if (dryRun) return;
+	await fs.ensureDir(pluginsPath);
+	for (const file of ["pretooluse-gate.ts", "evaluate-pretooluse.mjs"]) {
+		const src = path.join(srcDir, file);
+		if (!(await fs.pathExists(src))) continue;
+		await fs.copy(src, path.join(pluginsPath, file), { overwrite: true });
 	}
 }
 

@@ -53,6 +53,30 @@ export const CLI_OPTIONS: CLIOption[] = [
 		pluginsPath: path.join(HOME, ".copilot", "plugins"),
 		available: true,
 	},
+	{
+		id: "agy",
+		label: "Antigravity",
+		configPath: path.join(HOME, ".gemini", "antigravity-cli"),
+		skillsPath: path.join(HOME, ".gemini", "antigravity-cli", "skills"),
+		pluginsPath: path.join(HOME, ".gemini", "antigravity-cli", "plugins"),
+		available: true,
+	},
+	{
+		id: "grok",
+		label: "Grok",
+		configPath: path.join(HOME, ".grok"),
+		skillsPath: path.join(HOME, ".grok", "skills"),
+		pluginsPath: path.join(HOME, ".grok", "plugins"),
+		available: true,
+	},
+	{
+		id: "pi",
+		label: "Pi",
+		configPath: path.join(HOME, ".pi", "agent"),
+		skillsPath: path.join(HOME, ".pi", "agent", "skills"),
+		pluginsPath: path.join(HOME, ".pi", "agent", "extensions"),
+		available: true,
+	},
 ];
 
 export const MANIFEST_PATH = path.join(HOME, ".javi-ai", "manifest.json");

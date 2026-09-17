@@ -19,7 +19,11 @@ const FEATURES: { id: Feature; label: string; description: string }[] = [
 		label: "Configs",
 		description: "CLI configurations (CLAUDE.md, opencode.json, etc.)",
 	},
-	{ id: "hooks", label: "Hooks", description: "Post-tool hooks (Claude only)" },
+	{
+		id: "hooks",
+		label: "Hooks",
+		description: "Pre/post-tool hooks and PreToolUse gates",
+	},
 	{
 		id: "plugins",
 		label: "Plugins",

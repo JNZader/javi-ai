@@ -38,7 +38,7 @@ const cli = meow(
 
   Options
     --dry-run       Preview without making changes
-    --cli           Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot)
+    --cli           Comma-separated list of CLIs (claude,opencode,gemini,qwen,codex,copilot,agy,grok,pi)
     --skills        Comma-separated list of skills to install (cherry-pick)
     --yes           Non-interactive mode (auto-confirm, skip selectors)
     --version       Show version

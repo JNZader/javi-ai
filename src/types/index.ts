@@ -4,7 +4,10 @@ export type CLI =
 	| "gemini"
 	| "qwen"
 	| "codex"
-	| "copilot";
+	| "copilot"
+	| "agy"
+	| "grok"
+	| "pi";
 
 export type Feature =
 	| "skills"

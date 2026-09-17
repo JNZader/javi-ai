@@ -1,29 +1,7 @@
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { evaluatePreToolUse } from "./evaluate-pretooluse.mjs";
 
-function defaultReadFile(path) {
-	return readFileSync(path, "utf8");
-}
-
-export function evaluatePreToolUse(input) {
-	const readFile = input.readFile ?? defaultReadFile;
-	let policyText;
-	try {
-		policyText = readFile(input.policyPath);
-	} catch {
-		return "deny";
-	}
-
-	if (input.evaluatePolicy === undefined) {
-		return "deny";
-	}
-
-	try {
-		return input.evaluatePolicy(policyText, input.event);
-	} catch {
-		return "deny";
-	}
-}
+export { evaluatePreToolUse };
 
 function isDirectCli() {
 	const entry = process.argv[1];
