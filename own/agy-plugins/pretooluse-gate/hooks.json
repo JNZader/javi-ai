@@ -1,0 +1,12 @@
+{
+	"javi-ai-pretooluse": {
+		"PreToolUse": [
+			{
+				"matcher": "*",
+				"hooks": [
+					{ "type": "command", "command": "node ./pretooluse-hook.mjs" }
+				]
+			}
+		]
+	}
+}
