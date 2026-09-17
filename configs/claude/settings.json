@@ -102,5 +102,18 @@
       "Bash(~/.claude/plugins/trim-md/scripts/*:*)",
       "Bash(~/.claude/plugins/mermaid/scripts/*:*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/security-guard.sh"
+          }
+        ]
+      }
+    ]
   }
 }
