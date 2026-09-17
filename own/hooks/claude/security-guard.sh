@@ -15,9 +15,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS_FILE="${SCRIPT_DIR}/security-guard.yaml"
 
-# If patterns file doesn't exist, allow everything
-if [[ ! -f "$PATTERNS_FILE" ]]; then
-  exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "BLOCKED: node is required to evaluate PreToolUse policy" >&2
+  exit 2
+fi
+
+if ! node "$SCRIPT_DIR/pretooluse-runtime.mjs" "$PATTERNS_FILE"; then
+  echo "BLOCKED: PreToolUse policy denied or unreadable" >&2
+  exit 2
 fi
 
 # Only check Bash and Write/Edit tools
