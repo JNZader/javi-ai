@@ -242,6 +242,11 @@ async function installConfig(
 	}
 }
 
+const OVERWRITE_HOOK_FILES = new Set([
+	"security-guard.sh",
+	"pretooluse-runtime.mjs",
+]);
+
 async function installHooks(
 	configPath: string,
 	dryRun: boolean,
@@ -254,7 +259,8 @@ async function installHooks(
 	const files = await fs.readdir(hooksSrc);
 	for (const file of files) {
 		const dest = path.join(hooksDest, file);
-		if (!(await fs.pathExists(dest))) {
+		const shouldOverwrite = OVERWRITE_HOOK_FILES.has(file);
+		if (shouldOverwrite || !(await fs.pathExists(dest))) {
 			await fs.copy(path.join(hooksSrc, file), dest);
 			await fs.chmod(dest, 0o755);
 		}

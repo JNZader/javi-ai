@@ -1126,6 +1126,129 @@ describe("runInstall — installHooks create-if-absent", () => {
 		expect(content).toBe(originalContent);
 	});
 
+	it("existing security-guard.sh IS overwritten with source content and chmod 0o755", async () => {
+		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
+		await fs.ensureDir(hooksSrc);
+		const sourceContent = "#!/bin/sh FAIL-CLOSED";
+		await fs.writeFile(
+			path.join(hooksSrc, "security-guard.sh"),
+			sourceContent,
+			"utf-8",
+		);
+
+		const p = getPaths();
+		const hooksDir = path.join(p.CLAUDE_CONFIG, "hooks");
+		await fs.ensureDir(hooksDir);
+		await fs.writeFile(
+			path.join(hooksDir, "security-guard.sh"),
+			"#!/bin/sh FAIL-OPEN",
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ features: ["hooks"], dryRun: false }),
+			onStep,
+		);
+
+		const dest = path.join(hooksDir, "security-guard.sh");
+		expect(await fs.readFile(dest, "utf-8")).toBe(sourceContent);
+		const stat = await fs.stat(dest);
+		// eslint-disable-next-line no-bitwise
+		expect(stat.mode & 0o111).toBeGreaterThan(0);
+	});
+
+	it("existing pretooluse-runtime.mjs IS overwritten with source content and chmod 0o755", async () => {
+		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
+		await fs.ensureDir(hooksSrc);
+		const sourceContent = "export const gate = 'fail-closed';\n";
+		await fs.writeFile(
+			path.join(hooksSrc, "pretooluse-runtime.mjs"),
+			sourceContent,
+			"utf-8",
+		);
+
+		const p = getPaths();
+		const hooksDir = path.join(p.CLAUDE_CONFIG, "hooks");
+		await fs.ensureDir(hooksDir);
+		await fs.writeFile(
+			path.join(hooksDir, "pretooluse-runtime.mjs"),
+			"export const gate = 'stale';\n",
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ features: ["hooks"], dryRun: false }),
+			onStep,
+		);
+
+		const dest = path.join(hooksDir, "pretooluse-runtime.mjs");
+		expect(await fs.readFile(dest, "utf-8")).toBe(sourceContent);
+		const stat = await fs.stat(dest);
+		// eslint-disable-next-line no-bitwise
+		expect(stat.mode & 0o111).toBeGreaterThan(0);
+	});
+
+	it("missing pretooluse-runtime.mjs at dest IS created when source has it", async () => {
+		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
+		await fs.ensureDir(hooksSrc);
+		const sourceContent = "export const gate = 'fail-closed';\n";
+		await fs.writeFile(
+			path.join(hooksSrc, "pretooluse-runtime.mjs"),
+			sourceContent,
+			"utf-8",
+		);
+
+		const p = getPaths();
+		await fs.ensureDir(p.CLAUDE_CONFIG);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ features: ["hooks"], dryRun: false }),
+			onStep,
+		);
+
+		const dest = path.join(p.CLAUDE_CONFIG, "hooks", "pretooluse-runtime.mjs");
+		expect(await fs.pathExists(dest)).toBe(true);
+		expect(await fs.readFile(dest, "utf-8")).toBe(sourceContent);
+		const stat = await fs.stat(dest);
+		// eslint-disable-next-line no-bitwise
+		expect(stat.mode & 0o111).toBeGreaterThan(0);
+	});
+
+	it("existing comment-check.sh is still NOT overwritten", async () => {
+		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
+		await fs.ensureDir(hooksSrc);
+		await fs.writeFile(
+			path.join(hooksSrc, "comment-check.sh"),
+			"#!/bin/sh NEW",
+			"utf-8",
+		);
+
+		const p = getPaths();
+		const hooksDir = path.join(p.CLAUDE_CONFIG, "hooks");
+		await fs.ensureDir(hooksDir);
+		const originalContent = "#!/bin/sh ORIGINAL";
+		await fs.writeFile(
+			path.join(hooksDir, "comment-check.sh"),
+			originalContent,
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ features: ["hooks"], dryRun: false }),
+			onStep,
+		);
+
+		const content = await fs.readFile(
+			path.join(hooksDir, "comment-check.sh"),
+			"utf-8",
+		);
+		expect(content).toBe(originalContent);
+	});
+
 	it("hooks source does not exist: no hook files created", async () => {
 		const p = getPaths();
 		await fs.ensureDir(p.CLAUDE_CONFIG);
