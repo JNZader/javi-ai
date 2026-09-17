@@ -1,10 +1,36 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { fileURLToPath } from "node:url";
-import { decidePiToolCall } from "../../src/hooks/pi-pretooluse-gate.ts";
+import { evaluatePreToolUse } from "./evaluate-pretooluse.mjs";
 
 const defaultPolicyPath = fileURLToPath(
 	new URL("./pretooluse.policy", import.meta.url),
 );
+
+function decidePiToolCall(input: {
+	toolName: string;
+	toolInput?: string;
+	policyPath: string;
+	readFile?: (path: string) => string;
+}): { block: true; reason: string } | { block: false } {
+	const decision = evaluatePreToolUse({
+		event: {
+			toolName: input.toolName,
+			toolInput: input.toolInput,
+		},
+		policyPath: input.policyPath,
+		readFile: input.readFile,
+		evaluatePolicy: () => "allow",
+	});
+
+	if (decision === "deny") {
+		return {
+			block: true,
+			reason: "PreToolUse policy is missing or unreadable",
+		};
+	}
+
+	return { block: false };
+}
 
 export default function (pi: ExtensionAPI) {
 	pi.on("tool_call", (event) => {

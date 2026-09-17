@@ -1,32 +1,8 @@
-import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluatePreToolUse } from "./evaluate-pretooluse.mjs";
 
 const DENY_REASON = "PreToolUse policy is missing or unreadable";
-
-function defaultReadFile(path) {
-	return readFileSync(path, "utf8");
-}
-
-function evaluatePreToolUse(input) {
-	const readFile = input.readFile ?? defaultReadFile;
-	let policyText;
-	try {
-		policyText = readFile(input.policyPath);
-	} catch {
-		return "deny";
-	}
-
-	if (input.evaluatePolicy === undefined) {
-		return "deny";
-	}
-
-	try {
-		return input.evaluatePolicy(policyText, input.event);
-	} catch {
-		return "deny";
-	}
-}
 
 function decideCursorPreToolUse(input) {
 	const decision = evaluatePreToolUse({
