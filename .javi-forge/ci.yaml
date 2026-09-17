@@ -1,0 +1,7 @@
+# Docker CI overlays an empty volume on node_modules. Setup must install
+# inside that volume or `pnpm run lint` cannot find biome.
+version: 1
+runners:
+  - name: node
+    stack: node
+    setup: pnpm install --frozen-lockfile
