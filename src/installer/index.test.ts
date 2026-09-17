@@ -47,6 +47,15 @@ function getPaths() {
 		CODEX_SKILLS: path.join(t, "codex-skills"),
 		COPILOT_CONFIG: path.join(t, "copilot-config"),
 		COPILOT_SKILLS: path.join(t, "copilot-skills"),
+		AGY_CONFIG: path.join(t, "agy-config"),
+		AGY_SKILLS: path.join(t, "agy-skills"),
+		AGY_PLUGINS: path.join(t, "agy-plugins"),
+		GROK_CONFIG: path.join(t, "grok-config"),
+		GROK_SKILLS: path.join(t, "grok-skills"),
+		GROK_PLUGINS: path.join(t, "grok-plugins"),
+		PI_CONFIG: path.join(t, "pi-config"),
+		PI_SKILLS: path.join(t, "pi-skills"),
+		PI_PLUGINS: path.join(t, "pi-config", "extensions"),
 	};
 }
 
@@ -115,6 +124,30 @@ vi.mock("../constants.js", () => ({
 				pluginsPath: p.COPILOT_CONFIG + "/plugins",
 				available: true,
 			},
+			{
+				id: "agy",
+				label: "Antigravity",
+				configPath: p.AGY_CONFIG,
+				skillsPath: p.AGY_SKILLS,
+				pluginsPath: p.AGY_PLUGINS,
+				available: true,
+			},
+			{
+				id: "grok",
+				label: "Grok",
+				configPath: p.GROK_CONFIG,
+				skillsPath: p.GROK_SKILLS,
+				pluginsPath: p.GROK_PLUGINS,
+				available: true,
+			},
+			{
+				id: "pi",
+				label: "Pi",
+				configPath: p.PI_CONFIG,
+				skillsPath: p.PI_SKILLS,
+				pluginsPath: p.PI_PLUGINS,
+				available: true,
+			},
 		];
 	},
 }));
@@ -172,9 +205,11 @@ import { mergeMarkdownFile } from "../merger/markdown.js";
 import type { InstallOptions, InstallStep } from "../types/index.js";
 import { runInstall } from "./index.js";
 import { readManifest, writeManifest } from "./manifest.js";
+import { installPluginsForCLI } from "./plugins.js";
 import { installSkillsForCLI } from "./skills.js";
 
 const mockInstallSkills = vi.mocked(installSkillsForCLI);
+const mockInstallPlugins = vi.mocked(installPluginsForCLI);
 const mockMergeMarkdown = vi.mocked(mergeMarkdownFile);
 const mockMergeJson = vi.mocked(mergeJsonFile);
 const mockReadManifest = vi.mocked(readManifest);
@@ -1217,6 +1252,38 @@ describe("runInstall — installHooks create-if-absent", () => {
 		expect(stat.mode & 0o111).toBeGreaterThan(0);
 	});
 
+	it("existing evaluate-pretooluse.mjs IS overwritten with source content and chmod 0o755", async () => {
+		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
+		await fs.ensureDir(hooksSrc);
+		const sourceContent = "export const evaluate = 'fail-closed';\n";
+		await fs.writeFile(
+			path.join(hooksSrc, "evaluate-pretooluse.mjs"),
+			sourceContent,
+			"utf-8",
+		);
+
+		const p = getPaths();
+		const hooksDir = path.join(p.CLAUDE_CONFIG, "hooks");
+		await fs.ensureDir(hooksDir);
+		await fs.writeFile(
+			path.join(hooksDir, "evaluate-pretooluse.mjs"),
+			"export const evaluate = 'stale';\n",
+			"utf-8",
+		);
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ features: ["hooks"], dryRun: false }),
+			onStep,
+		);
+
+		const dest = path.join(hooksDir, "evaluate-pretooluse.mjs");
+		expect(await fs.readFile(dest, "utf-8")).toBe(sourceContent);
+		const stat = await fs.stat(dest);
+		// eslint-disable-next-line no-bitwise
+		expect(stat.mode & 0o111).toBeGreaterThan(0);
+	});
+
 	it("existing comment-check.sh is still NOT overwritten", async () => {
 		const hooksSrc = path.join(FIXED_ASSETS_ROOT, "own", "hooks", "claude");
 		await fs.ensureDir(hooksSrc);
@@ -1695,5 +1762,225 @@ describe("runInstall — step labels (surviving mutant: label template strings)"
 		);
 		// overwrite: true means new content should be there
 		expect(content).toBe("# New Agent");
+	});
+});
+
+describe("runInstall — gate-only CLIs (agy, grok, pi)", () => {
+	beforeEach(async () => {
+		currentTmpDir = path.join(
+			os.tmpdir(),
+			`javi-ai-idx-${crypto.randomUUID()}`,
+		);
+		await fs.ensureDir(currentTmpDir);
+		await fs.remove(FIXED_ASSETS_ROOT);
+		vi.clearAllMocks();
+		mockInstallSkills.mockResolvedValue([]);
+		mockInstallPlugins.mockResolvedValue([]);
+		mockMergeJson.mockResolvedValue(undefined);
+		mockReadManifest.mockResolvedValue({
+			version: "0.1.0",
+			installedAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			clis: [],
+			skills: {},
+		});
+		mockWriteManifest.mockResolvedValue(undefined);
+	});
+
+	afterEach(async () => {
+		await fs.remove(currentTmpDir);
+		await fs.remove(FIXED_ASSETS_ROOT);
+		vi.clearAllMocks();
+	});
+
+	async function setupAgyGateSrc() {
+		const src = path.join(
+			FIXED_ASSETS_ROOT,
+			"own",
+			"agy-plugins",
+			"pretooluse-gate",
+		);
+		await fs.ensureDir(src);
+		await fs.writeFile(
+			path.join(src, "plugin.json"),
+			'{"name":"agy"}',
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(src, "pretooluse-hook.mjs"),
+			"export const gate = 'agy';\n",
+			"utf-8",
+		);
+		return src;
+	}
+
+	async function setupGrokGateSrc() {
+		const src = path.join(
+			FIXED_ASSETS_ROOT,
+			"own",
+			"grok-plugins",
+			"pretooluse-gate",
+		);
+		await fs.ensureDir(src);
+		await fs.writeFile(
+			path.join(src, "plugin.json"),
+			'{"name":"grok"}',
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(src, "pretooluse-hook.mjs"),
+			"export const gate = 'grok';\n",
+			"utf-8",
+		);
+		return src;
+	}
+
+	async function setupPiGateSrc() {
+		const src = path.join(FIXED_ASSETS_ROOT, "own", "pi-extensions");
+		await fs.ensureDir(src);
+		await fs.writeFile(
+			path.join(src, "pretooluse-gate.ts"),
+			"export const gate = 'pi';\n",
+			"utf-8",
+		);
+		await fs.writeFile(
+			path.join(src, "evaluate-pretooluse.mjs"),
+			"export const evaluate = 'pi';\n",
+			"utf-8",
+		);
+		await fs.writeFile(path.join(src, "pretooluse.policy"), "allow\n", "utf-8");
+		return src;
+	}
+
+	it("agy hooks copies pretooluse-gate into pluginsPath", async () => {
+		await setupAgyGateSrc();
+		const p = getPaths();
+
+		const { onStep, steps } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["agy"], features: ["hooks"] }),
+			onStep,
+		);
+
+		expect(steps.find((s) => s.id === "agy-hooks")).toBeDefined();
+		expect(
+			await fs.pathExists(
+				path.join(p.AGY_PLUGINS, "pretooluse-gate", "plugin.json"),
+			),
+		).toBe(true);
+		expect(
+			await fs.pathExists(
+				path.join(p.AGY_PLUGINS, "pretooluse-gate", "pretooluse-hook.mjs"),
+			),
+		).toBe(true);
+	});
+
+	it("grok hooks copies pretooluse-gate into pluginsPath", async () => {
+		await setupGrokGateSrc();
+		const p = getPaths();
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["grok"], features: ["hooks"] }),
+			onStep,
+		);
+
+		expect(
+			await fs.pathExists(
+				path.join(p.GROK_PLUGINS, "pretooluse-gate", "plugin.json"),
+			),
+		).toBe(true);
+	});
+
+	it("pi hooks copies gate files into pluginsPath and does not dump extra files", async () => {
+		await setupPiGateSrc();
+		const p = getPaths();
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["pi"], features: ["hooks"] }),
+			onStep,
+		);
+
+		expect(
+			await fs.pathExists(path.join(p.PI_PLUGINS, "pretooluse-gate.ts")),
+		).toBe(true);
+		expect(
+			await fs.pathExists(path.join(p.PI_PLUGINS, "evaluate-pretooluse.mjs")),
+		).toBe(true);
+		expect(
+			await fs.pathExists(path.join(p.PI_PLUGINS, "pretooluse.policy")),
+		).toBe(false);
+	});
+
+	it("skills are NOT installed for agy, grok, or pi", async () => {
+		await setupAgyGateSrc();
+		await setupGrokGateSrc();
+		await setupPiGateSrc();
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({
+				clis: ["agy", "grok", "pi"],
+				features: ["skills", "hooks"],
+			}),
+			onStep,
+		);
+
+		expect(mockInstallSkills).not.toHaveBeenCalled();
+	});
+
+	it("claude still installs skills when skills is requested", async () => {
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["claude"], features: ["skills"] }),
+			onStep,
+		);
+		expect(mockInstallSkills).toHaveBeenCalledWith("claude", false, undefined);
+	});
+
+	it("agy plugins feature installs the gate and does not dump plugins", async () => {
+		await setupAgyGateSrc();
+		const p = getPaths();
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({ clis: ["agy"], features: ["plugins"] }),
+			onStep,
+		);
+
+		expect(mockInstallPlugins).not.toHaveBeenCalled();
+		expect(
+			await fs.pathExists(
+				path.join(p.AGY_PLUGINS, "pretooluse-gate", "plugin.json"),
+			),
+		).toBe(true);
+	});
+
+	it("agy configs and orchestrators are skipped", async () => {
+		const configSrc = path.join(FIXED_ASSETS_ROOT, "configs", "agy");
+		await fs.ensureDir(configSrc);
+		await fs.writeFile(path.join(configSrc, "settings.json"), "{}", "utf-8");
+		const orchSrc = path.join(
+			FIXED_ASSETS_ROOT,
+			"delta",
+			"orchestrators",
+			"agy",
+		);
+		await fs.ensureDir(orchSrc);
+		await fs.writeFile(path.join(orchSrc, "agent.md"), "# Agent", "utf-8");
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({
+				clis: ["agy"],
+				features: ["configs", "orchestrators"],
+			}),
+			onStep,
+		);
+
+		expect(mockMergeJson).not.toHaveBeenCalled();
+		const p = getPaths();
+		expect(await fs.pathExists(path.join(p.AGY_CONFIG, "agents"))).toBe(false);
 	});
 });

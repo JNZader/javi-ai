@@ -11,6 +11,9 @@ const CLI_BINARIES: Record<CLI, string[]> = {
 	qwen: ["qwen"],
 	codex: ["codex"],
 	copilot: ["github-copilot-cli", "copilot"],
+	agy: ["agy"],
+	grok: ["grok"],
+	pi: ["pi"],
 };
 
 export interface DetectionResult {
