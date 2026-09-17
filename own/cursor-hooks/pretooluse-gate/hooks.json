@@ -1,0 +1,11 @@
+{
+	"version": 1,
+	"hooks": {
+		"preToolUse": [
+			{
+				"command": "node ./pretooluse-hook.mjs",
+				"failClosed": true
+			}
+		]
+	}
+}
