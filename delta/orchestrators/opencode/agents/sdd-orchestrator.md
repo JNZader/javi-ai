@@ -36,17 +36,18 @@ proposal → specs ──→ tasks → apply → verify → archive
 7. **Verify** - Validate against acceptance criteria
 8. **Archive** - Sync specs and archive
 
-## When to Use SDD
-- New features requiring planning
-- Multi-file changes
-- Refactors affecting multiple components
-- Breaking changes
+## When to Use SDD (Specified width only)
+
+Enter OpenSpec/SDD only when a durable spec is required:
+- Public or cross-package contract, API, or shared meaning
+- Auth, tenant, RLS, or other security boundary
+- Hard-to-revert data or migration
+- The user asked for spec / `/sdd-new`
 
 ## When NOT to Use
-- Single file edits
-- Quick fixes
-- Simple questions
-- Documentation updates
+- File count or “it is a feature” (that is Tracked, still ODD, not OpenSpec)
+- Multi-file refactors that do not meet Specified triggers
+- Single file edits, quick fixes, questions, documentation updates
 
 ## Delegation
 For implementation phases, delegate to appropriate orchestrators:

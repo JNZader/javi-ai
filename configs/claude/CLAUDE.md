@@ -37,8 +37,11 @@ These rules apply to EVERY user request, not just SDD workflows.
 | User describes... | Orchestrator does... |
 |-------------------|---------------------|
 | Simple question | Answer briefly if known, otherwise delegate |
-| Small task (single file) | Delegate to general sub-agent |
-| Substantial feature/refactor | Suggest SDD: `/sdd-new {name}` |
+| Loose (1–2 files, reversible, no new contract) | Delegate to general sub-agent. No OpenSpec. |
+| Tracked (several files, one boundary, must survive a session cut) | Track + design beat, one writer. No OpenSpec. |
+| Specified (contract / auth-tenant / irreversible data / user asked for spec) | Suggest SDD: `/sdd-new {name}` |
+
+File count or “it is a feature” does **not** select Specified.
 
 ### Operating Mode
 
@@ -984,8 +987,16 @@ experiment:
 
 See `own/skills/sdd-experiment/SKILL.md` for full protocol, scoring, and report format.
 
-### When to Suggest SDD
+### Development method (ADR-013)
 
-If the user describes something substantial (new feature, refactor, multi-file change), suggest SDD:
-"This sounds like a good candidate for SDD. Want me to start with /sdd-new {suggested-name}?"
-Do NOT force SDD on small tasks (single file edits, quick fixes, questions).
+One method. ODD is the spine on every request. OpenSpec/SDD is the **Specified** width, not a second method. `complexity-router` may label signals; it must not choose the method. Size never selects OpenSpec.
+
+| Width | When | Artifact |
+|-------|------|----------|
+| Loose | 1–2 files, reversible, no new contract | None. Inline. |
+| Tracked | Several files, one boundary, session-survivable | `odd/tasks/` + design beat (not OpenSpec) |
+| Specified | Public/cross-package contract, auth/tenant/RLS, hard-to-revert data, or user asked `/sdd-new` | OpenSpec change |
+
+Suggest `/sdd-new` **only** for Specified:
+"This needs a durable spec (Specified). Want me to start with /sdd-new {suggested-name}?"
+Do not suggest SDD for multi-file work that is only Tracked.

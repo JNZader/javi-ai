@@ -1,11 +1,13 @@
 ---
 name: complexity-router
 description: >
-  Classifies task complexity (Small/Medium/Large) and routes to specialized agents with fresh context per phase.
-  Trigger: When receiving a new task, feature request, or bug report that needs complexity assessment before implementation.
+  Labels task width (loose / tracked / specified) from size and reversibility
+  signals. Does not choose the development method. OpenSpec/SDD is Specified only.
+  Trigger: When receiving a new task, feature request, or bug report that needs
+  a width label before implementation.
 metadata:
   author: javi-ai
-  version: "1.0"
+  version: "1.1"
   tags: [routing, orchestration, planning, agents]
   category: orchestration
 allowed-tools: Read, Bash, Glob, Grep, Task
@@ -13,7 +15,11 @@ allowed-tools: Read, Bash, Glob, Grep, Task
 
 ## Purpose
 
-Prevent quality degradation on long tasks by classifying complexity upfront, routing to the right execution strategy, and using fresh agent contexts per phase.
+Prevent quality degradation on long tasks by labeling **width** upfront.
+This skill is a **labeler**, not a method router. The owned table is javi-platform
+ADR-013 / `DEV-METHOD-WIDTHS.md`. ODD is the spine on every width.
+
+Do **not** map Large → full SDD. Do **not** start OpenSpec because of file count.
 
 ---
 
@@ -27,104 +33,85 @@ Prevent quality degradation on long tasks by classifying complexity upfront, rou
 
 ---
 
-## Complexity Classification
+## Width classification
 
-### Step 1: Analyze the Request
+### Step 1: Analyze the request
 
-Evaluate these signals:
+Evaluate these signals (they inform Loose vs Tracked and whether to delegate).
+They do **not** select OpenSpec.
 
-| Signal | Small | Medium | Large |
-|--------|-------|--------|-------|
-| Files affected | 1-2 | 3-5 | 6+ |
-| New APIs/interfaces | 0 | 1-2 | 3+ |
-| Cross-module changes | No | 1 boundary | Multiple |
-| Database changes | No | Schema only | Schema + migration |
-| Test impact | Update existing | New test file | New test suite |
-| External dependencies | None | Config only | New packages |
+| Signal | Loose | Tracked | Specified (only with triggers below) |
+|--------|-------|---------|--------------------------------------|
+| Files affected | 1-2 | 3+ | not sufficient alone |
+| New APIs/interfaces | 0 | 1-2 | public or cross-package contract |
+| Cross-module changes | No | 1 boundary | shared meaning across packages |
+| Database changes | No | Schema only | hard-to-revert data / migration |
+| Test impact | Update existing | New test file | — |
+| External dependencies | None | Config only | — |
 | Reversibility | Easy revert | Partial revert | Hard to revert |
 
-### Step 2: Classify
+### Step 2: Classify **one** width
 
-- **Small** — Can be done in a single pass. Direct implementation.
-- **Medium** — Needs a brief design doc before coding. 2-3 phases.
-- **Large** — Needs full SDD cycle (proposal -> spec -> design -> tasks).
+- **Loose** — 1–2 files, reversible, no new contract. Inline. No durable task file.
+- **Tracked** — several files, one boundary, must survive a session cut. Track
+  before the first source write (`odd/tasks/<feature>.md` or project equivalent)
+  plus a design beat (chat or a short design note — **not** OpenSpec).
+- **Specified** — durable spec required. Enter **only** if one of these is true:
+  - public or cross-package contract, API, or shared meaning
+  - auth, tenant, RLS, or other security boundary
+  - hard-to-revert data or migration
+  - the user asked for spec / `/sdd-new` / equivalent
 
-### Step 3: Report Classification
+Never enter Specified because of file count, “it is a feature”, or a multi-file
+refactor.
+
+### Step 3: Report classification
 
 ```
-## Complexity Assessment: [task name]
+## Width: [task name]
 
-**Classification**: Medium (3-5 files, 1 API boundary)
+**Width**: Tracked (3-5 files, 1 API boundary, reversible)
 
 **Signals**:
-- Files: src/auth/jwt.ts, src/auth/middleware.ts, src/types/auth.ts, tests/auth/
-- New API: refreshToken endpoint
-- Cross-module: auth -> routes boundary
-- Tests: new test file needed
+- Files: ...
+- New API: ...
+- Cross-module: ...
+- Tests: ...
 
-**Recommended approach**: Design doc + 2-phase implementation
+**Method**: ODD loop. Artifact = odd/tasks + design beat. Not OpenSpec.
 ```
 
 ---
 
-## Routing Strategies
+## Execution after the label (still ODD)
 
-### Small Tasks — Direct Implementation
+### Loose
 
-```
 1. Read the relevant file(s)
 2. Make the change
-3. Verify (run tests, type check)
+3. Verify (tests, typecheck)
 4. Done
-```
 
-No planning phase needed. Single agent context.
+Single agent context. No OpenSpec.
 
-### Medium Tasks — Design + Implement
+### Tracked
 
-```
-Phase 1: Design (fresh context)
-  - Read affected files
-  - Write a brief design doc (inline, not a file)
-  - Identify the implementation order
-  - List edge cases
+1. Design beat (inline or a short note — not `openspec/`)
+2. Track the feature before the first source write
+3. One writer. If 4+ files to understand or 2+ non-trivial writes, delegate
+   **one** writer (fresh context is execution, not a method switch)
+4. Tests/docs with the behavior
 
-Phase 2: Implement (fresh context)
-  - Read the design doc + affected files only
-  - Implement changes in order
-  - Write/update tests
-  - Verify
-```
+### Specified
 
-Each phase runs in a **fresh agent context** to prevent context degradation.
-
-### Large Tasks — Full SDD Cycle
-
-```
-Phase 1: Propose (fresh context)
-  - Analyze scope, risks, dependencies
-  - Write proposal with acceptance criteria
-
-Phase 2: Spec + Design (fresh context)
-  - Detailed requirements and scenarios
-  - Architecture decisions and patterns
-
-Phase 3: Tasks (fresh context)
-  - Break into numbered work items
-  - Estimate effort per task
-  - Identify dependencies
-
-Phase 4+: Apply (fresh context per task)
-  - One work item per agent invocation
-  - Verify after each task
-  - Commit atomically
-```
+Same ODD loop. Tracking lives in `openspec/changes/<name>/`. Use the SDD pack
+as the **artifact engine**, not as a second method.
 
 ---
 
-## Fullstack Routing
+## Fullstack routing
 
-For tasks that span frontend and backend:
+For tasks that span frontend and backend (after width is set):
 
 ### Detection Rules
 
@@ -153,15 +140,16 @@ Long sessions degrade quality. Enforce these guardrails:
 
 1. **Max 3 file changes per agent context** — if more are needed, spawn a new context
 2. **Verify after each change** — run tests, don't batch verifications
-3. **Re-read the spec before each phase** — prevents drift from the plan
-4. **Never skip the design phase for Medium+ tasks** — the 5 minutes saved costs 30 minutes debugging
+3. **Re-read the width/spec before each phase** — prevents drift from the plan
+4. **Never skip the design beat for Tracked or Specified** — the 5 minutes saved costs 30 minutes debugging
 
 ---
 
 ## Rules
 
-1. **Always classify before implementing** — even if it seems "obviously small"
-2. **Fresh context per phase** — use the Task tool to spawn new agent contexts
-3. **Show the classification to the user** — they may disagree and that's valuable
-4. **Default to one size up** — if uncertain between Small and Medium, choose Medium
-5. **Log the routing decision** — save to Engram for future reference
+1. **Always label width before implementing** — even if it seems "obviously small"
+2. **Fresh context is delegation, not a method** — do not start OpenSpec because you spawned a writer
+3. **Show the width to the user** — they may disagree and that's valuable
+4. **If uncertain between Loose and Tracked, choose Tracked** — not Specified
+5. **If uncertain whether Specified triggers apply, ask** — do not default to OpenSpec
+6. **Log the width** — save to Engram for future reference
