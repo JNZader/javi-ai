@@ -1,3 +1,9 @@
+## [1.4.0](https://github.com/JNZader/javi-ai/compare/v1.3.0...v1.4.0) (2026-09-26)
+
+### Features
+
+* **skills:** route Specified width to OpenSpec OPSX ([#13](https://github.com/JNZader/javi-ai/issues/13)) ([9807a3b](https://github.com/JNZader/javi-ai/commit/9807a3b1567d522ce1c449e988075fa8b72dc396))
+
 ## [1.3.0](https://github.com/JNZader/javi-ai/compare/v1.2.0...v1.3.0) (2026-09-25)
 
 ### Features
