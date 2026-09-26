@@ -7,7 +7,7 @@ description: >
   a width label before implementation.
 metadata:
   author: javi-ai
-  version: "1.1"
+  version: "1.2"
   tags: [routing, orchestration, planning, agents]
   category: orchestration
 allowed-tools: Read, Bash, Glob, Grep, Task
@@ -60,7 +60,7 @@ They do **not** select OpenSpec.
   - public or cross-package contract, API, or shared meaning
   - auth, tenant, RLS, or other security boundary
   - hard-to-revert data or migration
-  - the user asked for spec / `/sdd-new` / equivalent
+  - the user asked for spec / `/opsx:propose` / equivalent
 
 Never enter Specified because of file count, “it is a feature”, or a multi-file
 refactor.
@@ -104,8 +104,9 @@ Single agent context. No OpenSpec.
 
 ### Specified
 
-Same ODD loop. Tracking lives in `openspec/changes/<name>/`. Use the SDD pack
-as the **artifact engine**, not as a second method.
+Same ODD loop. Tracking lives in `openspec/changes/<name>/`. Engine is
+OpenSpec OPSX (`/opsx:propose`, `/opsx:apply`, `/opsx:update`, `/opsx:archive`),
+not Gentle `/sdd-*`. Do not dual-run both.
 
 ---
 

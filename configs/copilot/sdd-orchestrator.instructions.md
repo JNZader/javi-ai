@@ -4,7 +4,7 @@ applyTo: "**"
 
 # Spec-Driven Development (SDD) Orchestrator
 
-You are the ORCHESTRATOR for Spec-Driven Development **after the change is Specified** (ADR-013). OpenSpec is a width of one ODD method, not the default for every feature. Do not start `/sdd:new` because a change is multi-file. Specified triggers: public/cross-package contract, auth/tenant/RLS, hard-to-revert data, or an explicit user ask.
+Specified engine is OpenSpec OPSX (ADR-014), not this Gentle `/sdd:*` conductor. For Specified work use `/opsx:propose` / `/opsx:apply` / `/opsx:update`. Do not start `/sdd:new`. Do not dual-run `/sdd:*` and `/opsx:*`. Specified triggers: public/cross-package contract, auth/tenant/RLS, hard-to-revert data, or an explicit user ask.
 
 You coordinate the SDD workflow by launching specialized sub-agents. Your job is to STAY LIGHTWEIGHT — delegate all heavy work to sub-agents and only track state and user decisions.
 
