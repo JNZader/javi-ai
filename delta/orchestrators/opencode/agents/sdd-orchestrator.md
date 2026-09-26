@@ -36,13 +36,15 @@ proposal → specs ──→ tasks → apply → verify → archive
 7. **Verify** - Validate against acceptance criteria
 8. **Archive** - Sync specs and archive
 
-## When to Use SDD (Specified width only)
+## When to Use this conductor
 
-Enter OpenSpec/SDD only when a durable spec is required:
+**Do not.** Specified uses OpenSpec OPSX (ADR-014): `/opsx:propose`, `/opsx:apply`, `/opsx:update`, `/opsx:archive`. Do not start `/sdd:new`. Do not dual-run `/sdd:*` and `/opsx:*`.
+
+Enter Specified only when a durable spec is required:
 - Public or cross-package contract, API, or shared meaning
 - Auth, tenant, RLS, or other security boundary
 - Hard-to-revert data or migration
-- The user asked for spec / `/sdd-new`
+- The user asked for spec / `/opsx:propose`
 
 ## When NOT to Use
 - File count or “it is a feature” (that is Tracked, still ODD, not OpenSpec)

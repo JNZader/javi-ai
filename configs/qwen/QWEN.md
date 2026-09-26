@@ -302,16 +302,16 @@ For large task lists, batch tasks to sub-agents (e.g., "implement Phase 1, tasks
 Do NOT send all tasks at once — break into manageable batches.
 After each batch, show progress to user and ask to continue.
 
-### Development method (ADR-013)
+### Development method (ADR-013 / ADR-014)
 
-One method. ODD is the spine on every request. OpenSpec/SDD is the **Specified** width, not a second method. `complexity-router` may label signals; it must not choose the method. Size never selects OpenSpec.
+One method. ODD is the spine on every request. OpenSpec **OPSX** is the **Specified** width, not Gentle `/sdd-*`. `complexity-router` may label signals; it must not choose the method. Size never selects OpenSpec. Do not run `/sdd-*` and `/opsx:*` on the same request. Command tables below that list `/sdd-*` are leftover; Specified uses `/opsx:propose` / `/opsx:apply` / `/opsx:update` / `/opsx:archive`.
 
 | Width | When | Artifact |
 |-------|------|----------|
 | Loose | 1–2 files, reversible, no new contract | None. Inline. |
 | Tracked | Several files, one boundary, session-survivable | `odd/tasks/` + design beat (not OpenSpec) |
-| Specified | Public/cross-package contract, auth/tenant/RLS, hard-to-revert data, or user asked `/sdd-new` | OpenSpec change |
+| Specified | Public/cross-package contract, auth/tenant/RLS, hard-to-revert data, or user asked `/opsx:propose` | OPSX change; amend with `/opsx:update` |
 
-Suggest `/sdd-new` **only** for Specified:
-"This needs a durable spec (Specified). Want me to start with /sdd-new {suggested-name}?"
-Do not suggest SDD for multi-file work that is only Tracked.
+Suggest `/opsx:propose` **only** for Specified:
+"This needs a durable spec (Specified). Want me to start with /opsx:propose {suggested-name}?"
+Do not suggest OpenSpec for multi-file work that is only Tracked.
