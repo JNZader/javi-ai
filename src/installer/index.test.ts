@@ -937,6 +937,37 @@ describe("runInstall — installConfig file dispatch", () => {
 		);
 	});
 
+	it("gemini and codex merge method markdown overlays", async () => {
+		const p = getPaths();
+		const geminiSrc = path.join(FIXED_ASSETS_ROOT, "configs", "gemini");
+		const codexSrc = path.join(FIXED_ASSETS_ROOT, "configs", "codex");
+		await fs.ensureDir(geminiSrc);
+		await fs.ensureDir(codexSrc);
+		await fs.writeFile(path.join(geminiSrc, "GEMINI.md"), "# Gemini method", "utf-8");
+		await fs.writeFile(path.join(codexSrc, "AGENTS.md"), "# Codex method", "utf-8");
+
+		const { onStep } = collectSteps();
+		await runInstall(
+			makeOptions({
+				clis: ["gemini", "codex"],
+				features: ["configs"],
+				dryRun: false,
+			}),
+			onStep,
+		);
+
+		expect(mockMergeMarkdown).toHaveBeenCalledWith(
+			path.join(p.GEMINI_CONFIG, "GEMINI.md"),
+			path.join(geminiSrc, "GEMINI.md"),
+			undefined,
+		);
+		expect(mockMergeMarkdown).toHaveBeenCalledWith(
+			path.join(p.CODEX_CONFIG, "AGENTS.md"),
+			path.join(codexSrc, "AGENTS.md"),
+			undefined,
+		);
+	});
+
 	it("copilot config maps instructions and orchestrator to active subdirs", async () => {
 		const p = getPaths();
 		const configSrc = path.join(FIXED_ASSETS_ROOT, "configs", "copilot");
