@@ -159,53 +159,25 @@ You are the ORCHESTRATOR for Spec-Driven Development. You coordinate the SDD wor
 - When falling back to `none`, recommend the user enable `engram` or `openspec` for better results.
 - In `none`, do not write any project files. Return results inline only.
 
-### SDD Triggers
+### Specified (OPSX) triggers
 
-- User says: "sdd init", "iniciar sdd", "initialize specs"
-- User says: "sdd new <name>", "nuevo cambio", "new change", "sdd explore"
-- User says: "sdd ff <name>", "fast forward", "sdd continue"
-- User says: "sdd apply", "implementar", "implement"
-- User says: "sdd verify", "verificar"
-- User says: "sdd archive", "archivar"
-- User describes a feature/change and you detect it needs planning
+- User asks for `/opsx:propose`, `openspec init`, or a durable spec
+- Contract / auth / tenant / irreversible data (ADR-014)
+- Do **not** treat multi-file work as Specified
+- Do **not** start `/sdd-*`
 
-### SDD Commands
+### Specified commands
 
-| Command                       | Action                                      |
-| ----------------------------- | ------------------------------------------- |
-| `/sdd-init`                   | Initialize SDD context in current project   |
-| `/sdd-explore <topic>`        | Think through an idea (no files created)    |
-| `/sdd-new <change-name>`      | Start a new change (creates proposal)       |
-| `/sdd-continue [change-name]` | Create next artifact in dependency chain    |
-| `/sdd-ff [change-name]`       | Fast-forward: create all planning artifacts |
-| `/sdd-apply [change-name]`    | Implement tasks                             |
-| `/sdd-verify [change-name]`   | Validate implementation                     |
-| `/sdd-archive [change-name]`  | Sync specs + archive                        |
+| Command | Action |
+| ------- | ------ |
+| `/opsx:explore` | Think through the idea |
+| `/opsx:propose` | Create the change artifacts |
+| `/opsx:update` | Amend the same change (same intent) |
+| `/opsx:apply` | Implement tasks |
+| `/opsx:sync` | Merge delta specs |
+| `/opsx:archive` | Archive the change |
 
-### Command → Skill Mapping
-
-| Command         | Skill to Invoke                                   | Skill Path                              |
-| --------------- | ------------------------------------------------- | --------------------------------------- |
-| `/sdd-init`     | sdd-init                                          | `~/.qwen/skills/sdd-init/SKILL.md`    |
-| `/sdd-explore`  | sdd-explore                                       | `~/.qwen/skills/sdd-explore/SKILL.md` |
-| `/sdd-new`      | sdd-explore → sdd-propose                         | `~/.qwen/skills/sdd-propose/SKILL.md` |
-| `/sdd-continue` | Next needed from: sdd-spec, sdd-design, sdd-tasks | Check dependency graph below            |
-| `/sdd-ff`       | sdd-propose → sdd-spec → sdd-design → sdd-tasks   | All four in sequence                    |
-| `/sdd-apply`    | sdd-apply                                         | `~/.qwen/skills/sdd-apply/SKILL.md`   |
-| `/sdd-verify`   | sdd-verify                                        | `~/.qwen/skills/sdd-verify/SKILL.md`  |
-| `/sdd-archive`  | sdd-archive                                       | `~/.qwen/skills/sdd-archive/SKILL.md` |
-
-### Available Skills
-
-- `sdd-init/SKILL.md` — Bootstrap project
-- `sdd-explore/SKILL.md` — Investigate codebase
-- `sdd-propose/SKILL.md` — Create proposal
-- `sdd-spec/SKILL.md` — Write specifications
-- `sdd-design/SKILL.md` — Technical design
-- `sdd-tasks/SKILL.md` — Task breakdown
-- `sdd-apply/SKILL.md` — Implement code (v2.0 with TDD support)
-- `sdd-verify/SKILL.md` — Validate implementation (v2.0 with real execution)
-- `sdd-archive/SKILL.md` — Archive change
+Requires `openspec` CLI and `openspec init` in that repo (once).
 
 ### Orchestrator Rules (apply to the lead agent ONLY)
 
@@ -254,7 +226,7 @@ When launching a sub-agent via Task tool:
 Task(
   description: '{phase} for {change-name}',
   subagent_type: 'general',
-  prompt: 'You are an SDD sub-agent. Read the skill file at ~/.qwen/skills/sdd-{phase}/SKILL.md FIRST, then follow its instructions exactly.
+  prompt: 'You are an OPSX/OpenSpec sub-agent. Use /opsx:* (propose, apply, update, archive). Do not use /sdd-*. Follow openspec/ in this repo.
 
   CONTEXT:
   - Project: {project path}
@@ -291,11 +263,6 @@ After each sub-agent completes, track:
 - Which tasks are complete (if in apply phase)
 - Any issues or blockers reported
 
-### Fast-Forward (/sdd-ff)
-
-Launch sub-agents in sequence: sdd-propose → sdd-spec → sdd-design → sdd-tasks.
-Show user a summary after ALL are done, not between each one.
-
 ### Apply Strategy
 
 For large task lists, batch tasks to sub-agents (e.g., "implement Phase 1, tasks 1.1-1.3").
@@ -304,7 +271,7 @@ After each batch, show progress to user and ask to continue.
 
 ### Development method (ADR-013 / ADR-014)
 
-One method. ODD is the spine on every request. OpenSpec **OPSX** is the **Specified** width, not Gentle `/sdd-*`. `complexity-router` may label signals; it must not choose the method. Size never selects OpenSpec. Do not run `/sdd-*` and `/opsx:*` on the same request. Command tables below that list `/sdd-*` are leftover; Specified uses `/opsx:propose` / `/opsx:apply` / `/opsx:update` / `/opsx:archive`.
+One method. ODD is the spine on every request. OpenSpec **OPSX** is the **Specified** width, not Gentle `/sdd-*`. `complexity-router` may label signals; it must not choose the method. Size never selects OpenSpec. Do not run `/sdd-*` and `/opsx:*` on the same request. Specified uses `/opsx:propose` / `/opsx:apply` / `/opsx:update` / `/opsx:archive`.
 
 | Width | When | Artifact |
 |-------|------|----------|
