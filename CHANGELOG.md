@@ -1,3 +1,9 @@
+## [1.5.0](https://github.com/JNZader/javi-ai/compare/v1.4.0...v1.5.0) (2026-09-28)
+
+### Features
+
+* **install:** OPSX overlays for Qwen, Gemini, Codex ([#14](https://github.com/JNZader/javi-ai/issues/14)) ([32fff82](https://github.com/JNZader/javi-ai/commit/32fff824a067bb3037adabe1969bed18bb37801e))
+
 ## [1.4.0](https://github.com/JNZader/javi-ai/compare/v1.3.0...v1.4.0) (2026-09-26)
 
 ### Features
