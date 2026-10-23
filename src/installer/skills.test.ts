@@ -187,6 +187,12 @@ async function createAssetTree(): Promise<void> {
 		"# Obsidian",
 		"utf-8",
 	);
+	await fs.ensureDir(path.join(ownSkills, "security-audit"));
+	await fs.writeFile(
+		path.join(ownSkills, "security-audit", "SKILL.md"),
+		"---\nname: security-audit\noptional: true\n---\n# Security Audit",
+		"utf-8",
+	);
 
 	// Extra skill for filter testing (no dependencies to avoid resolver direction issue)
 	await fs.ensureDir(path.join(gsSkills, "zustand-5"));
@@ -483,7 +489,31 @@ describe("installSkillsForCLI", () => {
 		warnSpy.mockRestore();
 	});
 
-	it("skillFilter: no filter installs all (backward compatible)", async () => {
+	it("optional skills are skipped when skillFilter is absent", async () => {
+		const result = await installSkillsForCLI("claude", false);
+
+		expect(result).not.toContain("security-audit");
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "security-audit", "SKILL.md"),
+			),
+		).toBe(false);
+	});
+
+	it("optional skills are installed when explicitly selected", async () => {
+		const result = await installSkillsForCLI("claude", false, [
+			"security-audit",
+		]);
+
+		expect(result).toContain("security-audit");
+		expect(
+			await fs.pathExists(
+				path.join(FIXED_CLAUDE_DEST, "security-audit", "SKILL.md"),
+			),
+		).toBe(true);
+	});
+
+	it("skillFilter: no filter installs all non-optional skills", async () => {
 		const resultNoFilter = await installSkillsForCLI("claude", true);
 		const resultUndefined = await installSkillsForCLI(
 			"claude",
@@ -500,5 +530,6 @@ describe("installSkillsForCLI", () => {
 		expect(resultNoFilter).toContain("react-19");
 		expect(resultNoFilter).toContain("sdd-apply");
 		expect(resultNoFilter).toContain("skill-creator");
+		expect(resultNoFilter).not.toContain("security-audit");
 	});
 });

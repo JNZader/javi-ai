@@ -44,6 +44,7 @@ export interface SkillManifest {
 	installedAt: string;
 	checksum?: string;
 	dependencies?: string[];
+	optional?: boolean;
 }
 
 // --- Plugin types ---

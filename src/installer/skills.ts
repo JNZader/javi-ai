@@ -38,6 +38,17 @@ async function readSkillDependencies(skillMdPath: string): Promise<string[]> {
 	}
 }
 
+async function readSkillOptional(skillMdPath: string): Promise<boolean> {
+	try {
+		const raw = await fs.readFile(skillMdPath, "utf-8");
+		const fm = parseFrontmatter(raw);
+		const value = fm?.data.optional;
+		return String(value).toLowerCase() === "true";
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Collect all available skill names and their manifests from all source layers.
  * Used to build the dependency graph before installation.
@@ -69,6 +80,9 @@ async function buildAvailableSkillsMap(
 			const deps = (await fs.pathExists(skillMd))
 				? await readSkillDependencies(skillMd)
 				: [];
+			const optional = (await fs.pathExists(skillMd))
+				? await readSkillOptional(skillMd)
+				: false;
 
 			available.set(skillDir, {
 				name: skillDir,
@@ -76,6 +90,7 @@ async function buildAvailableSkillsMap(
 				source,
 				installedAt: new Date().toISOString(),
 				dependencies: deps,
+				optional,
 			});
 		}
 	};
@@ -259,6 +274,13 @@ async function installSkillsForCLI(
 	const ownInstalled = new Set<string>();
 
 	for (const skillDir of orderedSkills) {
+		if (
+			availableSkills.get(skillDir)?.optional === true &&
+			!skillFilter?.includes(skillDir)
+		) {
+			continue;
+		}
+
 		// own skills take highest priority
 		if (ownSkillPaths.has(skillDir)) {
 			const skillPath = ownSkillPaths.get(skillDir)!;
